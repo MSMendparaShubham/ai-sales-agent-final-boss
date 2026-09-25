@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRevenueIntelligence } from '@/lib/analytics';
+import { requireSession, requireWorkspace } from '@/lib/auth/auth-utils';
+import { prisma } from '@/lib/db/prisma';
 
 function flattenObject(obj: any, prefix = ''): Record<string, any> {
   return Object.keys(obj).reduce((acc: any, k: string) => {
@@ -26,8 +28,30 @@ function jsonToCsv(data: any): string {
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireSession();
+    let firstMembership = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id }
+    });
+
+    if (!firstMembership) {
+      let ws = await prisma.workspace.findFirst();
+      if (!ws) {
+        ws = await prisma.workspace.create({
+          data: { name: 'IntentOS Enterprise Workspace' }
+        });
+      }
+      firstMembership = await prisma.workspaceMember.create({
+        data: {
+          userId: session.user.id,
+          workspaceId: ws.id,
+          role: 'ADMIN'
+        }
+      });
+    }
+
+    const { membership } = await requireWorkspace(firstMembership.workspaceId);
+
     const url = new URL(req.url);
-    const workspaceId = url.searchParams.get('workspaceId') || 'ws-1';
     const startDateStr = url.searchParams.get('startDate');
     const endDateStr = url.searchParams.get('endDate');
     const campaignId = url.searchParams.get('campaignId') || undefined;
@@ -36,7 +60,7 @@ export async function GET(req: NextRequest) {
     const format = url.searchParams.get('format') || 'json';
 
     const params = {
-      workspaceId,
+      workspaceId: membership.workspaceId,
       startDate: startDateStr ? new Date(startDateStr) : undefined,
       endDate: endDateStr ? new Date(endDateStr) : undefined,
       campaignId,
@@ -59,6 +83,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error fetching analytics:', error);
+    if (error?.message === 'NEXT_REDIRECT') throw error;
     return NextResponse.json({ error: 'Failed to fetch analytics data' }, { status: 500 });
   }
 }

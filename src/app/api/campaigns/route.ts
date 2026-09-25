@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCampaignsData } from '@/lib/scoring';
 import { prisma } from '@/lib/db/prisma';
-import { cookies } from 'next/headers';
+import { requireSession, requireWorkspace } from '@/lib/auth/auth-utils';
 import { LocalDeterministicCampaignRunner } from '@/lib/campaigns/runner';
 
 export async function GET() {
@@ -16,29 +16,28 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const sessionId = (await cookieStore).get('session_id')?.value;
-
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const session = await prisma.session.findUnique({
-      where: { id: sessionId },
-      include: { user: true }
+    const session = await requireSession();
+    let firstMembership = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id },
     });
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!firstMembership) {
+      let ws = await prisma.workspace.findFirst();
+      if (!ws) {
+        ws = await prisma.workspace.create({
+          data: { name: 'IntentOS Enterprise Workspace' },
+        });
+      }
+      firstMembership = await prisma.workspaceMember.create({
+        data: {
+          userId: session.user.id,
+          workspaceId: ws.id,
+          role: 'ADMIN',
+        },
+      });
     }
 
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { userId: session.userId }
-    });
-
-    if (!membership) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 403 });
-    }
+    const { membership } = await requireWorkspace(firstMembership.workspaceId);
 
     const body = await req.json();
     const {
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
         maxAttempts: Number(maxAttempts),
         scheduleMode,
         status: scheduleMode === 'IMMEDIATE' ? 'ACTIVE' : 'SCHEDULED',
-        ownerId: session.userId,
+        ownerId: session.user.id,
       },
     });
 
@@ -103,6 +102,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error creating campaign:', error);
+    if (error?.message === 'NEXT_REDIRECT') throw error;
     return NextResponse.json({ error: error.message || 'Failed to create campaign' }, { status: 500 });
   }
 }

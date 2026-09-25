@@ -18,6 +18,8 @@ export async function buildVoiceContext({ leadId, language = 'en-US' }: BuildCon
       qualifications: { take: 1, orderBy: { createdAt: 'desc' } },
       calls: { take: 2, orderBy: { createdAt: 'desc' }, where: { status: 'COMPLETED' } },
       followUpPlans: { take: 2, orderBy: { createdAt: 'desc' } },
+      source: true,
+      discoveryResults: { take: 1, orderBy: { createdAt: 'desc' } },
       workspace: {
         include: {
           businessProfile: true,
@@ -47,11 +49,15 @@ export async function buildVoiceContext({ leadId, language = 'en-US' }: BuildCon
   // Prospect Context
   const primaryRequirement = lead.requirements[0];
   const reqExcerpt = primaryRequirement?.rawEvidence || primaryRequirement?.description || lead.salesBrief || 'Evaluating enterprise technology partners.';
+  const platformName = lead.source?.platform === 'X' || lead.source?.platform === 'TWITTER' ? 'X (Twitter)' : (lead.source?.platform || 'LinkedIn');
+  const topicName = primaryRequirement?.title || 'cloud and infrastructure modernization';
   const reqs = lead.requirements.map(r => `${r.title} ("${r.rawEvidence || r.description}")`).join('; ');
   const recentSignals = lead.company.marketSignals.map(s => s.title).join(', ');
   const pastCalls = lead.calls.length > 0 ? `We have spoken to them ${lead.calls.length} times recently.` : 'This is a new outreach.';
   
   const prospectContext = `You are speaking with ${lead.name}, ${lead.title} at ${lead.company.name}.
+Company Domain: ${lead.company.domain || 'Enterprise'}, Size: ${lead.company.size || '250-1000 employees'}
+Originating Public Signal Platform: ${platformName}
 Intent Score: ${lead.intentScore}/100.
 Verified Procurement Signal: "${reqExcerpt}".
 Known requirements: ${reqs || 'Unknown'}.
@@ -59,7 +65,7 @@ Recent company intelligence: ${recentSignals || 'None'}.
 ${pastCalls}
 
 CALL OPENING DIRECTIVE:
-You are calling ${lead.name} at ${lead.company.name}. You noticed their post: "${reqExcerpt}". Greet them warmly, reference their requirement, and qualify their enterprise timeline and budget.`;
+You are calling ${lead.name} at ${lead.company.name}. Open warmly with: "Hi ${lead.name}, I'm calling from IntentOS regarding your recent public requirement on ${platformName} about ${topicName}—specifically: \\"${reqExcerpt}\\". Wanted to see if your team has finalized partner evaluations yet?"`;
 
   // Build the unified ruleset
   let agentRules = `

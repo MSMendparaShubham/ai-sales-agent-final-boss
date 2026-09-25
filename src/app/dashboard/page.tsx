@@ -190,14 +190,15 @@ export default function DashboardPage() {
 
             <div className="space-y-3">
               {data.priorityQueue.map((lead) => {
-                const isHero = (lead.intentScore ?? 0) >= 90;
+                const isHero = (lead.intentScore ?? 0) >= 80;
+                const isTwitter = lead.primarySource === 'X' || lead.primarySource === 'TWITTER';
                 return (
                   <div
                     key={lead.id}
                     className={`p-4 rounded-xl border transition-all ${
                       isHero
                         ? 'glass-card border-blue-500/40 shadow-md ring-1 ring-blue-500/20 bg-gradient-to-r from-blue-50/50 via-white/90 to-white/80'
-                        : 'glass-card-interactive border-slate-200/80'
+                        : 'glass-card-interactive border-slate-200/80 bg-white/90'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -212,7 +213,7 @@ export default function DashboardPage() {
                           </Link>
                           {isHero && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E8F7F5] text-[#0F9D9A] border border-[#0F9D9A]/30">
-                              TOP TARGET
+                              HIGH INTENT
                             </span>
                           )}
                           <StatusBadge status={lead.urgency} type="urgency" />
@@ -221,17 +222,14 @@ export default function DashboardPage() {
 
                         <p className="text-xs text-[#627D98]">
                           <span className="text-[#102A43] font-semibold">{lead.contactName}</span> ({lead.contactTitle}) —{' '}
-                          <span className="text-[#627D98]">{lead.topRequirement}</span>
+                          <span className="text-[#627D98] font-medium">{lead.topRequirement}</span>
                         </p>
 
-                        {isHero && (
-                          <div className="pt-1 flex items-center gap-3 text-[11px] text-[#627D98]">
-                            <span className="flex items-center gap-1 text-[#16A34A] font-medium">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Verified RFP Post
-                            </span>
-                            <span className="flex items-center gap-1 text-[#2563EB] font-medium">
-                              <Clock className="w-3.5 h-3.5" /> 30-day timeline target
-                            </span>
+                        {lead.rawEvidence && (
+                          <div className={`p-2 rounded text-xs italic line-clamp-2 border-l-2 ${
+                            isTwitter ? 'bg-slate-100 text-slate-800 border-slate-900' : 'bg-blue-50/60 text-slate-800 border-blue-500'
+                          }`}>
+                            &ldquo;{lead.rawEvidence}&rdquo;
                           </div>
                         )}
                       </div>
@@ -243,18 +241,16 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {isHero && (
-                            <Link href={`/calls?leadId=${lead.id}&start=true`}>
-                              <Button
-                                size="sm"
-                                className="h-8 text-xs bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-semibold flex items-center gap-1.5 shadow-sm"
-                                data-testid="hero-call-now-btn"
-                              >
-                                <PhoneCall className="w-3.5 h-3.5" />
-                                <span>Call Now</span>
-                              </Button>
-                            </Link>
-                          )}
+                          <Link href={`/calls?leadId=${lead.id}&start=true`}>
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-semibold flex items-center gap-1.5 shadow-sm"
+                              data-testid="hero-call-now-btn"
+                            >
+                              <PhoneCall className="w-3.5 h-3.5" />
+                              <span>Call Now</span>
+                            </Button>
+                          </Link>
                           <Link href={`/opportunities/${lead.id}`}>
                             <Button
                               size="sm"
@@ -262,7 +258,7 @@ export default function DashboardPage() {
                               className="h-8 text-xs border-[#D9E2EC] bg-white hover:bg-[#F5F7FA] text-[#102A43] font-medium"
                               data-testid={isHero ? 'hero-analyze-btn' : undefined}
                             >
-                              {isHero ? 'Review Opportunity' : 'Analyze'}
+                              <span>Analyze</span>
                             </Button>
                           </Link>
                         </div>

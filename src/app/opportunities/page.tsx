@@ -7,6 +7,8 @@ import {
   Filter,
   RefreshCw,
   ChevronRight,
+  PhoneCall,
+  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -384,13 +386,24 @@ export default function OpportunitiesPage() {
 
                         {/* Action */}
                         <td className="py-3 px-3 text-right whitespace-nowrap">
-                          <Link
-                            href={`/opportunities/${item.id}`}
-                            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs text-[#2563EB] hover:text-[#1d4ed8] hover:bg-[#EAF2FF] font-semibold transition-colors"
-                          >
-                            <span>Review</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </Link>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Link
+                              href={`/calls?leadId=${item.id}&start=true`}
+                              className="inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-semibold border border-emerald-200 transition-colors"
+                              title="Start AI Voice Qualification"
+                            >
+                              <PhoneCall className="w-3 h-3 text-emerald-600" />
+                              <span>Call</span>
+                            </Link>
+
+                            <Link
+                              href={`/opportunities/${item.id}`}
+                              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs text-[#2563EB] hover:text-[#1d4ed8] hover:bg-[#EAF2FF] font-semibold transition-colors"
+                            >
+                              <span>Review</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     );

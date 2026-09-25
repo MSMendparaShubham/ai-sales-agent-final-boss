@@ -164,6 +164,8 @@ export interface DashboardMetrics {
     status: string;
     pipelineValue: number;
     topRequirement: string;
+    rawEvidence?: string;
     primarySource: string;
+    sourceUrl?: string | null;
   }>;
 }

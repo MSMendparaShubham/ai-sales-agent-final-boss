@@ -14,7 +14,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     priorityLeads,
   ] = await Promise.all([
     prisma.lead.count(),
-    prisma.lead.count({ where: { intentScore: { gte: 80 } } }),
+    prisma.lead.count({ where: { OR: [{ intentScore: { gte: 80 } }, { status: 'HIGH_INTENT' }] } }),
     prisma.lead.count({ where: { status: { in: ['HIGH_INTENT', 'QUALIFIED'] } } }),
     prisma.call.count(),
     prisma.lead.count({ where: { status: 'INTERESTED' } }),
@@ -22,13 +22,13 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     prisma.lead.aggregate({ _sum: { pipelineValue: true } }),
     prisma.lead.findMany({ select: { status: true } }),
     prisma.lead.findMany({
-      where: { intentScore: { gte: 75 } },
-      orderBy: { intentScore: 'desc' },
-      take: 5,
+      orderBy: { createdAt: 'desc' },
+      take: 6,
       include: {
         company: true,
         source: true,
-        requirements: { take: 1 },
+        requirements: { take: 1, orderBy: { createdAt: 'desc' } },
+        discoveryResults: { take: 1, orderBy: { createdAt: 'desc' } },
       },
     }),
   ]);
@@ -58,18 +58,26 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     percentage: totalOpportunities > 0 ? Math.round((stageCounts[stage] / totalOpportunities) * 100) : 0,
   }));
 
-  const priorityQueue = priorityLeads.map((l) => ({
-    id: l.id,
-    companyName: l.company.name,
-    contactName: l.name,
-    contactTitle: l.title,
-    intentScore: l.intentScore,
-    urgency: l.urgency,
-    status: l.status,
-    pipelineValue: l.pipelineValue,
-    topRequirement: l.requirements[0]?.title || 'System Modernization',
-    primarySource: l.source?.platform || 'LINKEDIN',
-  }));
+  const priorityQueue = priorityLeads.map((l) => {
+    const isTwitter = l.source?.platform === 'X' || l.source?.platform === 'TWITTER' || l.linkedinUrl?.includes('x.com') || l.linkedinUrl?.includes('twitter.com');
+    const platform = isTwitter ? 'X' : (l.source?.platform || 'LINKEDIN');
+    const rawEvidence = l.requirements[0]?.rawEvidence || l.requirements[0]?.description || l.salesBrief || 'Evaluating enterprise partners...';
+
+    return {
+      id: l.id,
+      companyName: l.company?.name || 'Enterprise Client',
+      contactName: l.name,
+      contactTitle: l.title,
+      intentScore: l.intentScore,
+      urgency: l.urgency,
+      status: l.status,
+      pipelineValue: l.pipelineValue,
+      topRequirement: l.requirements[0]?.title || 'System Modernization',
+      rawEvidence,
+      primarySource: platform,
+      sourceUrl: l.discoveryResults?.[0]?.sourceUrl || l.linkedinUrl,
+    };
+  });
 
   return {
     totalOpportunities,
@@ -485,6 +493,7 @@ export async function getAdminData() {
   const [
     users,
     totalOpportunities,
+    totalCompanies,
     totalCalls,
     totalCampaigns,
     callsWithDuration,
@@ -492,6 +501,7 @@ export async function getAdminData() {
   ] = await Promise.all([
     prisma.user.findMany(),
     prisma.lead.count(),
+    prisma.company.count(),
     prisma.call.count(),
     prisma.campaign.count(),
     prisma.call.findMany({ select: { durationSeconds: true } }),
@@ -512,12 +522,20 @@ export async function getAdminData() {
   const totalSeconds = callsWithDuration.reduce((sum, c) => sum + c.durationSeconds, 0);
   const totalVoiceMinutes = Math.round(totalSeconds / 60);
 
+  const apiStatus = {
+    serper: Boolean(process.env.SERPER_API_KEY) ? 'ACTIVE' : 'NOT_CONFIGURED',
+    apollo: Boolean(process.env.APOLLO_API_KEY) ? 'ACTIVE' : 'NOT_CONFIGURED',
+    gemini: Boolean(process.env.GEMINI_API_KEY) ? 'ACTIVE' : 'NOT_CONFIGURED',
+  };
+
   return {
     users,
     totalOpportunities,
+    totalCompanies,
     totalCalls,
     totalCampaigns,
     totalVoiceMinutes,
+    apiStatus,
     systemStatus: {
       database: 'HEALTHY (SQLite Local)',
       voiceEngine: 'READY (Nova AI Streamer)',
