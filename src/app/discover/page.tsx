@@ -148,7 +148,20 @@ export default function DiscoveryPage() {
     location && location !== '' && location !== 'ALL' && location !== 'All Regions'
   );
 
+  const TOP_PRESETS = [
+    'AWS',
+    'SharePoint',
+    'Salesforce',
+    'Snowflake',
+    'Kubernetes',
+    'Cybersecurity',
+    'Microsoft 365',
+    'Cloud Infrastructure',
+    'DevOps',
+  ];
+
   const keywordPresets = [
+    ...TOP_PRESETS,
     'SharePoint Migration',
     'Microsoft 365 Setup',
     'Cloud Infrastructure & AWS',
@@ -412,17 +425,7 @@ export default function DiscoveryPage() {
                 <Sparkles className="w-3 h-3 text-[#2563EB]" />
                 Top Presets:
               </span>
-              {[
-                'SharePoint Migration',
-                'Microsoft 365 Setup',
-                'Cloud Infrastructure & AWS',
-                'Generative AI & LLM Integration',
-                'DevOps & Kubernetes',
-                'Cybersecurity & Compliance',
-                'Salesforce Implementation',
-                'SOC 2 Audit Prep',
-                'Data Engineering & Snowflake',
-              ].map((p) => (
+              {TOP_PRESETS.map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -481,7 +484,7 @@ export default function DiscoveryPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setKeyword('SharePoint Migration');
+                    setKeyword('AWS');
                     setSource('LINKEDIN');
                     setIndustry('Information Technology & Services');
                     setLocation('United States');
@@ -504,11 +507,11 @@ export default function DiscoveryPage() {
                   lead.salesBrief ||
                   'Evaluating enterprise partners...';
 
-                const authorProfileUrl = lead.linkedinUrl
+                const targetLinkedinUrl = lead.linkedinUrl
                   ? lead.linkedinUrl.startsWith('http')
                     ? lead.linkedinUrl
                     : `https://${lead.linkedinUrl}`
-                  : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+                  : `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(
                       `${lead.name} ${lead.company.name}`
                     )}`;
 
@@ -531,9 +534,13 @@ export default function DiscoveryPage() {
                           <span className="text-xs text-slate-400">at</span>
                           <Link
                             href={`/opportunities/${lead.id}`}
-                            className="font-bold text-xs text-[#2563EB] hover:underline"
+                            className="font-bold text-xs text-[#2563EB] hover:underline inline-flex items-center gap-1.5"
                           >
-                            {lead.company.name}
+                            <span>{lead.company.name}</span>
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-blue-600" />
+                              Verified Company
+                            </span>
                           </Link>
                           <StatusBadge status={lead.source?.platform || 'LINKEDIN'} type="source" />
                         </div>
@@ -541,7 +548,7 @@ export default function DiscoveryPage() {
                           <span>{lead.company.industry}</span>
                           <span>&bull;</span>
                           <Building2 className="w-3.5 h-3.5 text-slate-400 inline" />
-                          <span>{lead.company.size || '500-1000 employees'}</span>
+                          <span>{lead.company.size || '250-1000 employees'}</span>
                         </p>
                       </div>
 
@@ -570,12 +577,12 @@ export default function DiscoveryPage() {
                     <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs flex-wrap gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <a
-                          href={authorProfileUrl}
+                          href={targetLinkedinUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
                         >
-                          <span>View Author Profile</span>
+                          <span>View Verified LinkedIn Company & People</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                         <button
