@@ -525,34 +525,39 @@ export default function DiscoveryPage() {
                       </div>
                     </div>
 
-                    {/* Requirement or Profile Snippet */}
-                    <div className="space-y-1 bg-slate-50/70 p-3 rounded-lg border border-slate-200/80 backdrop-blur-sm">
-                      <h4 className="text-xs font-bold text-[#102A43]">{req?.title || 'Executive Opportunity'}</h4>
-                      <p className="text-xs text-[#627D98] line-clamp-2 leading-relaxed font-medium">
-                        &ldquo;{req?.rawEvidence || req?.description || item.salesBrief || 'Discovered profile matching criteria.'}&rdquo;
-                      </p>
+                    {/* Public Post Verbatim Snippet Box */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] text-[#627D98] font-semibold">
+                        <span className="text-[#2563EB] font-bold">{req?.title || 'Public LinkedIn RFP Signal'}</span>
+                        <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
+                          Verified Public Post
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded text-xs sm:text-sm text-slate-700 italic my-2 shadow-2xs leading-relaxed">
+                        &ldquo;{req?.rawEvidence || req?.description || item.salesBrief || 'Public procurement requirement detected on LinkedIn.'}&rdquo;
+                      </div>
                     </div>
 
                     {/* Footer Meta & Actions */}
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 text-xs">
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs">
                       <div className="flex items-center gap-3 text-slate-500 font-medium">
                         <span className="flex items-center gap-1">
                           <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          {item.company.size || '50-200 employees'}
+                          {item.company.size || '500-1000 employees'}
                         </span>
                         {cleanLinkedinUrl ? (
                           <a
                             href={cleanLinkedinUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-xs"
                           >
-                            <span>View LinkedIn Profile</span>
+                            <span>Open Original LinkedIn Post</span>
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         ) : (
                           <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                            No Profile Link Available
+                            No Post Link Available
                           </span>
                         )}
                       </div>

@@ -75,7 +75,10 @@ export function StatusBadge({ status, type = 'status', className }: StatusBadgeP
     }
   }
 
-  const label = status.replace(/_/g, ' ');
+  let label = status.replace(/_/g, ' ');
+  if (type === 'source' && (status === 'LINKEDIN' || status === 'LinkedIn')) {
+    label = 'LinkedIn Public Post';
+  }
 
   return (
     <span
