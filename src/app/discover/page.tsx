@@ -462,9 +462,9 @@ export default function DiscoveryPage() {
                 <Search className="w-6 h-6" />
               </div>
               <div className="max-w-md mx-auto space-y-1.5">
-                <h3 className="text-base font-bold text-[#102A43]">No Leads Discovered</h3>
+                <h3 className="text-base font-bold text-[#102A43]">Ready to Scan</h3>
                 <p className="text-xs text-[#627D98] leading-relaxed">
-                  No Leads Discovered. Adjust your keyword or region filters.
+                  Ready to scan. Select a preset or enter a keyword to discover live enterprise buyer signals.
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2.5 pt-2 flex-wrap">
