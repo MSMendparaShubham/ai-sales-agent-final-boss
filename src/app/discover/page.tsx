@@ -105,9 +105,7 @@ export default function DiscoveryPage() {
         const count = data.count ?? data.totalDiscovered ?? 0;
         if (count > 0) {
           showToast(
-            `Discovered ${count} prospective ${count === 1 ? 'lead' : 'leads'} successfully from ${
-              source === 'ALL' ? 'public channels' : source
-            }!`,
+            `Discovered ${count} executive leads for ${keyword || 'your search'}.`,
             'success'
           );
         } else {
@@ -491,7 +489,9 @@ export default function DiscoveryPage() {
                   ? item.linkedinUrl.startsWith('http')
                     ? item.linkedinUrl
                     : `https://${item.linkedinUrl}`
-                  : null;
+                  : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+                      `${item.name} ${item.company.name}`
+                    )}`;
 
                 return (
                   <Card
