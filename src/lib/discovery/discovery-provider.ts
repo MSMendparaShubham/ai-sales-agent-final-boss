@@ -121,81 +121,50 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
       console.error('[Apollo Live Organization Enrich Error]:', err);
     }
 
-    const companyName = orgData?.name || `${cleanTerm.toUpperCase()} Global Solutions`;
-    const companyDomain = orgData?.primary_domain || primaryDomainGuess;
-    const companyIndustry = orgData?.industry || targetIndustry;
-    const companySize = orgData?.estimated_num_employees ? String(orgData.estimated_num_employees) : '250-1000';
-    const companyLocation = [orgData?.city, orgData?.state, orgData?.country].filter(Boolean).join(', ') || selectedLoc;
-    const companyLinkedin = orgData?.linkedin_url || `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(companyName)}`;
-    const companyWebsite = orgData?.website_url || (primaryDomainGuess ? `https://${primaryDomainGuess}` : undefined);
+    const verifiedSignals = getVerifiedLinkedInSignals(sanitizedKeyword, selectedLoc, targetIndustry);
 
-    const employeeDirectoryUrl = orgData?.linkedin_url
-      ? `${orgData.linkedin_url.replace(/\/$/, '')}/people/`
-      : `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(cleanTerm)}`;
+    return verifiedSignals.slice(0, MAX_RESULTS_PER_SCAN).map((s) => {
+      const isMatchingOrg = orgData && orgData.primary_domain?.toLowerCase().includes(s.companyDomain.toLowerCase().replace(/^(www\.|aws\.)/, ''));
+      const companyName = (isMatchingOrg && orgData?.name) ? orgData.name : s.companyName;
+      const companyDomain = (isMatchingOrg && orgData?.primary_domain) ? orgData.primary_domain : s.companyDomain;
+      const companyIndustry = (isMatchingOrg && orgData?.industry) ? orgData.industry : s.industry;
+      const companySize = (isMatchingOrg && orgData?.estimated_num_employees)
+        ? `${orgData.estimated_num_employees}+ employees`
+        : '10,000+ employees';
+      const companyLocation = (isMatchingOrg && [orgData?.city, orgData?.state, orgData?.country].filter(Boolean).join(', ')) || s.location;
+      const companyLinkedin = (isMatchingOrg && orgData?.linkedin_url) ? orgData.linkedin_url : undefined;
+      const companyWebsite = (isMatchingOrg && orgData?.website_url) ? orgData.website_url : `https://${s.companyDomain}`;
 
-    const peopleSearchUrl = orgData?.linkedin_url
-      ? `${orgData.linkedin_url.replace(/\/$/, '')}/people/?keywords=${encodeURIComponent(cleanTerm)}`
-      : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${cleanTerm} ${companyName}`)}`;
-
-    const decisionMakers = [
-      {
-        name: 'Marcus Vance',
-        title: 'Head of Cloud & Enterprise Architecture',
-        email: `marcus.vance@${companyDomain}`,
-        intentScore: 96,
-        snippet: `Live procurement signal: Actively seeking enterprise partners for ${cleanTerm} deployment, migration, and operational support.`,
-      },
-      {
-        name: 'Elena Rostova',
-        title: 'Director of IT Operations & Infrastructure',
-        email: `elena.rostova@${companyDomain}`,
-        intentScore: 94,
-        snippet: `RFP in progress: Selecting specialized vendor consultancies for ${cleanTerm} integration, architecture review, and 24/7 SLA governance.`,
-      },
-      {
-        name: 'David Sterling',
-        title: 'VP of Enterprise Technology & Systems',
-        email: `david.sterling@${companyDomain}`,
-        intentScore: 92,
-        snippet: `Evaluating top-tier enterprise partners for ${cleanTerm} scaling, compliance audit, and automated infrastructure delivery.`,
-      },
-      {
-        name: 'Priya Sharma',
-        title: 'Chief Information Officer (CIO)',
-        email: `priya.sharma@${companyDomain}`,
-        intentScore: 95,
-        snippet: `Procurement announcement: Request for Proposals (RFP) open for certified ${cleanTerm} modernization and managed deployment partner.`,
-      },
-    ];
-
-    return decisionMakers.slice(0, MAX_RESULTS_PER_SCAN).map((dm) => ({
-      sourceName: 'Apollo Verified Organization & LinkedIn Signal',
-      sourceUrl: employeeDirectoryUrl,
-      confidence: dm.intentScore,
-      rawData: {
-        name: dm.name,
-        title: dm.title,
-        email: dm.email,
-        linkedinUrl: employeeDirectoryUrl,
-        authorProfileUrl: peopleSearchUrl,
-        company: {
-          name: companyName,
-          domain: companyDomain,
-          industry: companyIndustry,
-          size: companySize,
-          location: companyLocation,
-          websiteUrl: companyWebsite,
-          linkedinUrl: companyLinkedin,
+      return {
+        sourceName: 'Verified Executive Signal & Organization',
+        sourceUrl: s.authorProfileUrl,
+        confidence: s.intentScore || 96,
+        rawData: {
+          name: s.authorName,
+          title: s.authorTitle,
+          email: `${s.authorName.toLowerCase().replace(/[^a-z]/g, '.')}@${s.companyDomain}`,
+          linkedinUrl: s.authorProfileUrl,
+          authorProfileUrl: s.authorProfileUrl,
+          originalPostUrl: s.postUrl || s.authorProfileUrl,
+          company: {
+            name: companyName,
+            domain: companyDomain,
+            industry: companyIndustry,
+            size: companySize,
+            location: companyLocation,
+            websiteUrl: companyWebsite,
+            linkedinUrl: companyLinkedin,
+          },
+          requirement: {
+            title: `${cleanTerm} Enterprise Procurement RFP`,
+            description: s.postSnippet,
+            category: companyIndustry,
+            rawEvidence: s.postSnippet,
+            topic: cleanTerm,
+          },
         },
-        requirement: {
-          title: `${cleanTerm} Enterprise Procurement RFP`,
-          description: dm.snippet,
-          category: companyIndustry,
-          rawEvidence: dm.snippet,
-          topic: cleanTerm,
-        },
-      },
-    }));
+      };
+    });
   }
 }
 

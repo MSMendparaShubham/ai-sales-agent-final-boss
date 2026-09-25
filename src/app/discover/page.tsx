@@ -582,7 +582,7 @@ export default function DiscoveryPage() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
                         >
-                          <span>View Verified LinkedIn Company & People</span>
+                          <span>{targetLinkedinUrl.includes('/in/') ? 'View Verified LinkedIn Profile' : 'View Verified LinkedIn Company & People'}</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                         <button
