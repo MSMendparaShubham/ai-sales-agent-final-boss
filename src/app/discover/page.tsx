@@ -108,14 +108,18 @@ export default function DiscoveryPage() {
             `Discovered ${count} executive leads for ${keyword || 'your search'}.`,
             'success'
           );
+          if (data.leads && Array.isArray(data.leads) && data.leads.length > 0) {
+            setResults(data.leads); // Immediately render the leads returned by the API
+          } else {
+            await fetchDiscoveryResults();
+          }
         } else {
           showToast(
             'No leads discovered matching your query. Try broadening your keywords.',
             'error'
           );
+          await fetchDiscoveryResults();
         }
-        // Immediately reload table data with newly discovered leads
-        await fetchDiscoveryResults();
       } else {
         const errMsg = data.error || 'Discovery scan failed to find candidates. Please refine your search keyword.';
         console.error('[Discover UI Error]:', errMsg);
@@ -533,8 +537,8 @@ export default function DiscoveryPage() {
                           Verified Public Post
                         </span>
                       </div>
-                      <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded text-xs sm:text-sm text-slate-700 italic my-2 shadow-2xs leading-relaxed">
-                        &ldquo;{req?.rawEvidence || req?.description || item.salesBrief || 'Public procurement requirement detected on LinkedIn.'}&rdquo;
+                      <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded text-sm text-slate-800 italic my-2 shadow-2xs leading-relaxed">
+                        &ldquo;{req?.rawEvidence || req?.description || item.salesBrief || 'Looking for an enterprise partner...'}&rdquo;
                       </div>
                     </div>
 

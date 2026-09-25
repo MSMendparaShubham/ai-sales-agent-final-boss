@@ -514,7 +514,19 @@ export async function runDiscoveryJob(
       },
     });
 
-    return { totalDiscovered, count: totalDiscovered, leads: createdLeads };
+    const fullLeads = await prisma.lead.findMany({
+      where: {
+        id: { in: createdLeads.map((l) => l.id) },
+      },
+      include: {
+        company: true,
+        source: true,
+        requirements: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { totalDiscovered, count: totalDiscovered, leads: fullLeads };
   } catch (error: any) {
     console.error('[runDiscoveryJob Error]:', error);
     await prisma.discoveryJob.update({

@@ -133,19 +133,31 @@ export async function getOpportunities(params: LeadFilterParams, workspaceId: st
     where.urgency = params.urgency;
   }
 
-  if (params.location && params.location !== 'ALL') {
-    where.company = { ...(where.company || {}), location: { contains: params.location } };
+  if (params.location && params.location !== 'ALL' && params.location !== 'All Regions') {
+    let locTerms = [params.location];
+    if (params.location.includes('India') || params.location.includes('APAC')) {
+      locTerms = ['India', 'Singapore', 'Australia', 'APAC', 'Bengaluru', 'Hyderabad'];
+    } else if (params.location.includes('United Kingdom') || params.location.includes('Europe')) {
+      locTerms = ['United Kingdom', 'UK', 'London', 'Germany', 'France', 'Netherlands', 'Ireland', 'Europe'];
+    } else if (params.location.includes('United States')) {
+      locTerms = ['United States', 'US', 'USA', 'San Francisco', 'Austin', 'New York', 'Seattle', 'CA', 'TX', 'NY', 'WA'];
+    }
+
+    where.company = {
+      ...(where.company || {}),
+      OR: locTerms.map((term) => ({ location: { contains: term } })),
+    };
   }
 
-  let orderBy: any = { intentScore: 'desc' };
-  if (params.sortBy === 'newest') {
-    orderBy = { discoveredAt: 'desc' };
-  } else if (params.sortBy === 'qualification') {
+  let orderBy: any = { discoveredAt: 'desc' };
+  if (params.sortBy === 'qualification') {
     orderBy = { qualificationScore: 'desc' };
   } else if (params.sortBy === 'company') {
     orderBy = { company: { name: params.sortOrder || 'asc' } };
   } else if (params.sortBy === 'intent') {
     orderBy = { intentScore: params.sortOrder || 'desc' };
+  } else if (params.sortBy === 'newest') {
+    orderBy = { discoveredAt: 'desc' };
   }
 
   const [total, items] = await Promise.all([
