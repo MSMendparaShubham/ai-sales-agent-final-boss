@@ -173,6 +173,7 @@ export async function getOpportunities(params: LeadFilterParams, workspaceId: st
         requirements: true,
         qualifications: true,
         recommendations: true,
+        discoveryResults: true,
         calls: true,
       },
     }),

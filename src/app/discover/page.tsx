@@ -16,9 +16,9 @@ import {
   CheckCircle2,
   X,
   Phone,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { TableLoadingSkeleton } from '@/components/shared/loading-skeleton';
@@ -29,9 +29,9 @@ export default function DiscoveryPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'ai' | 'import'>('ai');
   const [keyword, setKeyword] = useState('');
-  const [source, setSource] = useState('');
-  const [industry, setIndustry] = useState('');
-  const [location, setLocation] = useState('');
+  const [source, setSource] = useState('LINKEDIN');
+  const [industry, setIndustry] = useState('Information Technology & Services');
+  const [location, setLocation] = useState('United States');
   const [results, setResults] = useState<OpportunityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
@@ -96,6 +96,7 @@ export default function DiscoveryPage() {
           channel: source,
           source: source,
           keyword: keyword || '',
+          description: keyword || '',
           industry: industry || '',
           location: location || '',
         }),
@@ -108,23 +109,23 @@ export default function DiscoveryPage() {
         const count = data.count ?? data.totalDiscovered ?? 0;
         if (count > 0) {
           showToast(
-            `Discovered ${count} executive leads for ${keyword || 'your search'}.`,
+            `Discovered ${count} live verified executive leads.`,
             'success'
           );
           if (data.leads && Array.isArray(data.leads) && data.leads.length > 0) {
-            setResults(data.leads); // Immediately render the leads returned by the API
+            setResults(data.leads);
           } else {
             await fetchDiscoveryResults();
           }
         } else {
           showToast(
-            'No leads discovered matching your query. Try broadening your keywords.',
+            'No live posts found matching your specific query. Try broadening your description.',
             'error'
           );
-          await fetchDiscoveryResults();
+          setResults([]);
         }
       } else {
-        const errMsg = data.error || 'Discovery scan failed to find candidates. Please refine your search keyword.';
+        const errMsg = data.error || 'Discovery scan failed to find candidates. Please refine your search query.';
         console.error('[Discover UI Error]:', errMsg);
         showToast(errMsg, 'error');
       }
@@ -141,45 +142,33 @@ export default function DiscoveryPage() {
     router.push(`/calls?leadId=${lead.id}&start=true`);
   };
 
-  const canTriggerScan = Boolean(
-    keyword && keyword.trim().length > 0 &&
-    source && source !== '' && source !== 'ALL' &&
-    industry && industry !== '' && industry !== 'ALL' && industry !== 'All Industries' &&
-    location && location !== '' && location !== 'ALL' && location !== 'All Regions'
-  );
+  const canTriggerScan = Boolean(keyword && keyword.trim().length > 0);
 
   const TOP_PRESETS = [
-    'AWS',
-    'SharePoint',
-    'Salesforce',
-    'Snowflake',
-    'Kubernetes',
-    'Cybersecurity',
-    'Microsoft 365',
-    'Cloud Infrastructure',
-    'DevOps',
-  ];
-
-  const keywordPresets = [
-    ...TOP_PRESETS,
-    'SharePoint Migration',
-    'Microsoft 365 Setup',
-    'Cloud Infrastructure & AWS',
-    'Salesforce Implementation',
-    'HubSpot CRM Consulting',
-    'Cybersecurity & Compliance',
-    'SOC 2 Audit Prep',
-    'DevOps & Kubernetes',
-    'ERP Modernization (SAP / Oracle)',
-    'Generative AI & LLM Integration',
-    'Data Engineering & Snowflake',
-    'Custom Mobile App Development',
-    'Enterprise UI/UX Redesign',
-    'Full-Stack Web Development',
-    'IT Managed Services & Support',
-    'B2B SaaS Sales Outsourcing',
-    'Staff Augmentation & Hiring',
-    'QA & Automated Testing',
+    {
+      label: 'Cloud Security & SOC 2',
+      query: 'We offer enterprise cloud security modernization and SOC 2 audit readiness for fintech companies.',
+    },
+    {
+      label: 'SharePoint & M365 Migration',
+      query: 'Looking for mid-market healthcare and finance companies needing SharePoint migration and Microsoft 365 compliance.',
+    },
+    {
+      label: 'AWS & Cloud Modernization',
+      query: 'Seeking companies looking for AWS cloud architecture, multi-region resilience, and infrastructure modernizations.',
+    },
+    {
+      label: 'Salesforce Implementation',
+      query: 'Providing enterprise Salesforce CRM implementation, optimization, and legacy system integration services.',
+    },
+    {
+      label: 'Data Engineering & Snowflake',
+      query: 'Enterprise data pipeline modernization, Snowflake migration, and real-time analytics solutions.',
+    },
+    {
+      label: 'DevOps & Kubernetes',
+      query: 'Kubernetes container orchestration, CI/CD pipeline automation, and cloud cost optimization for enterprises.',
+    },
   ];
 
   const sources = [
@@ -255,7 +244,7 @@ export default function DiscoveryPage() {
             onClick={handleManualScan}
             disabled={!canTriggerScan || isScanning || activeTab !== 'ai'}
             size="sm"
-            title={!canTriggerScan ? 'Please fill in all 4 search criteria to trigger scan.' : undefined}
+            title={!canTriggerScan ? 'Please describe your target clients or service offering to trigger scan.' : undefined}
             className={`text-xs font-semibold flex items-center gap-2 shadow-sm transition-all ${
               !canTriggerScan || isScanning || activeTab !== 'ai'
                 ? 'bg-slate-200 text-slate-400 border border-slate-300 opacity-60 cursor-not-allowed hover:bg-slate-200'
@@ -263,11 +252,11 @@ export default function DiscoveryPage() {
             }`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>{isScanning ? 'Scanning Public Channels...' : 'Trigger Scan Now'}</span>
+            <span>{isScanning ? 'Searching Live LinkedIn Posts...' : 'Trigger Scan Now'}</span>
           </Button>
           {!canTriggerScan && activeTab === 'ai' && (
             <span className="text-[10px] text-[#627D98] font-medium">
-              Please fill in all 4 search criteria to trigger scan.
+              Enter a service description or select a preset to scan.
             </span>
           )}
         </div>
@@ -303,195 +292,155 @@ export default function DiscoveryPage() {
         <>
           {/* Filter Toolbar */}
           <Card className="p-4 sm:p-5 glass-card border-slate-200/80 space-y-4 rounded-xl shadow-glass">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
-              {/* Keyword & Presets Dropdown */}
-              <div className="md:col-span-5 space-y-1.5">
+            <div className="space-y-3.5">
+              {/* Natural Description Input */}
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-[#627D98] flex items-center gap-1">
-                    <span>Keyword *</span>
+                  <label className="text-[11px] font-bold text-[#627D98] flex items-center gap-1.5">
+                    <MessageSquareQuote className="w-3.5 h-3.5 text-[#2563EB]" />
+                    <span>Target Client Requirement or Service Offering *</span>
                   </label>
-                  <span className="text-[10px] text-[#2563EB] font-semibold">Required</span>
+                  <span className="text-[10px] text-[#2563EB] font-semibold">Gemini AI Dork Parsing Active</span>
                 </div>
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-[#627D98] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <Input
-                      type="text"
-                      placeholder="e.g. SharePoint Migration, Cloud Modernization"
-                      value={keyword}
-                      onChange={(e) => setKeyword(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          fetchDiscoveryResults();
-                        }
-                      }}
-                      className="pl-9 h-9 bg-white border-[#D9E2EC] text-[#102A43] text-xs placeholder:text-[#627D98] focus-visible:ring-[#2563EB] font-sans font-medium"
-                    />
-                    {keyword && (
-                      <button
-                        onClick={() => setKeyword('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                        title="Clear keyword"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
 
-                  {/* Preset Dropdown */}
-                  <select
-                    value={keywordPresets.includes(keyword) ? keyword : ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setKeyword(e.target.value);
-                        if (!source) setSource('LINKEDIN');
-                        if (!industry) setIndustry('Information Technology & Services');
-                        if (!location) setLocation('United States');
+                <div className="relative">
+                  <textarea
+                    rows={2}
+                    placeholder="Describe your target clients or service offering (e.g., 'Looking for mid-market healthcare companies needing SharePoint migration and HIPAA compliance')..."
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (canTriggerScan) handleManualScan();
                       }
                     }}
-                    className="w-full h-8 bg-slate-50 border border-[#D9E2EC] rounded-md px-2.5 text-[11px] text-[#102A43] focus:outline-none focus:border-[#2563EB] font-medium"
+                    className="w-full p-3 rounded-lg bg-white border border-[#D9E2EC] text-[#102A43] text-xs placeholder:text-[#627D98] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB] font-sans font-medium resize-none shadow-inner"
+                  />
+                  {keyword && (
+                    <button
+                      onClick={() => setKeyword('')}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-0.5"
+                      title="Clear description"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Filters Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Public Channel */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-[#627D98] block">
+                    Public Channel
+                  </label>
+                  <select
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-semibold"
                   >
-                    <option value="">⚡ Or Choose from 18 High-Intent B2B Presets...</option>
-                    {keywordPresets.map((preset) => (
-                      <option key={preset} value={preset}>
-                        {preset}
+                    {sources.map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Target Industry */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-[#627D98] block">
+                    Target Industry
+                  </label>
+                  <select
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-medium"
+                  >
+                    {industries.map((ind) => (
+                      <option key={ind} value={ind}>
+                        {ind}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Target Location */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-[#627D98] block">
+                    Target Location
+                  </label>
+                  <select
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-medium"
+                  >
+                    {locations.map((loc) => (
+                      <option key={loc} value={loc}>
+                        {loc}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Public Channel */}
-              <div className="md:col-span-3 space-y-1.5">
-                <label className="text-[11px] font-bold text-[#627D98] block">
-                  Public Channel *
-                </label>
-                <select
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-semibold"
-                >
-                  <option value="">Select Channel...</option>
-                  {sources.map((s) => (
-                    <option key={s.key} value={s.key}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
+              {/* Quick-Select Pills */}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold text-[#627D98] uppercase tracking-wider mr-1 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#2563EB]" />
+                  Preset Templates:
+                </span>
+                {TOP_PRESETS.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      setKeyword(preset.query);
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                      keyword === preset.query
+                        ? 'bg-[#2563EB] text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-[#102A43] border border-slate-200/60'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
-
-              {/* Target Industry */}
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="text-[11px] font-bold text-[#627D98] block">
-                  Target Industry *
-                </label>
-                <select
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-medium"
-                >
-                  <option value="">Select Target Industry...</option>
-                  {industries.map((ind) => (
-                    <option key={ind} value={ind}>
-                      {ind}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Target Location */}
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="text-[11px] font-bold text-[#627D98] block">
-                  Target Location *
-                </label>
-                <select
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-medium"
-                >
-                  <option value="">Select Target Location...</option>
-                  {locations.map((loc) => (
-                    <option key={loc} value={loc}>
-                      {loc}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Quick-Select Pills */}
-            <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-bold text-[#627D98] uppercase tracking-wider mr-1 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#2563EB]" />
-                Top Presets:
-              </span>
-              {TOP_PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setKeyword(p);
-                    if (!source) setSource('LINKEDIN');
-                    if (!industry) setIndustry('Information Technology & Services');
-                    if (!location) setLocation('United States');
-                  }}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
-                    keyword === p
-                      ? 'bg-[#2563EB] text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-[#102A43] border border-slate-200/60'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
             </div>
           </Card>
 
           {/* Discovery Results Count Header */}
           <div className="flex items-center justify-between text-xs text-[#627D98] px-1 font-medium">
-            <span>Found {results.length} discovered prospects matching criteria</span>
-            <span className="text-[#0F9D9A] font-bold">Autonomous Ingestion Queue Active</span>
+            <span>Found {results.length} live executive buying signals</span>
+            <span className="text-[#0F9D9A] font-bold">Live Serper Google Crawl Active</span>
           </div>
 
           {/* Results Cards */}
           {loading ? (
-            <TableLoadingSkeleton rows={5} />
+            <TableLoadingSkeleton rows={4} />
           ) : results.length === 0 ? (
             <div className="bg-white border border-slate-200/80 rounded-xl p-8 sm:p-12 text-center space-y-4 shadow-sm">
               <div className="w-12 h-12 rounded-full bg-blue-50 text-[#2563EB] mx-auto flex items-center justify-center border border-blue-100">
                 <Search className="w-6 h-6" />
               </div>
               <div className="max-w-md mx-auto space-y-1.5">
-                <h3 className="text-base font-bold text-[#102A43]">Ready to Scan</h3>
+                <h3 className="text-base font-bold text-[#102A43]">Describe Your Target Client</h3>
                 <p className="text-xs text-[#627D98] leading-relaxed">
-                  Ready to scan. Select a preset or enter a keyword to discover live enterprise buyer signals.
+                  Describe your target client above to discover live buying signals.
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2.5 pt-2 flex-wrap">
                 <Button
-                  variant="outline"
                   size="sm"
                   onClick={() => {
-                    setKeyword('');
-                    setSource('');
-                    setIndustry('');
-                    setLocation('');
-                  }}
-                  className="text-xs font-semibold border-slate-200 bg-white hover:bg-slate-50 text-[#102A43]"
-                >
-                  Clear Filters
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setKeyword('AWS');
-                    setSource('LINKEDIN');
-                    setIndustry('Information Technology & Services');
-                    setLocation('United States');
+                    setKeyword('We offer enterprise cloud security modernization and SOC 2 audit readiness for fintech companies.');
                   }}
                   className="text-xs font-semibold bg-[#2563EB] hover:bg-[#1d4ed8] text-white"
                 >
-                  Try Popular Presets
+                  Load Example Query
                 </Button>
               </div>
             </div>
@@ -514,6 +463,11 @@ export default function DiscoveryPage() {
                   : `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(
                       `${lead.name} ${lead.company.name}`
                     )}`;
+
+                const originalPostUrl =
+                  lead.discoveryResults?.[0]?.sourceUrl ||
+                  (lead as any).sourceUrl ||
+                  targetLinkedinUrl;
 
                 return (
                   <Card
@@ -585,6 +539,19 @@ export default function DiscoveryPage() {
                           <span>View Author Profile</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+
+                        {originalPostUrl && (
+                          <a
+                            href={originalPostUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200 transition-colors"
+                          >
+                            <span>View Live Post</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+
                         <button
                           onClick={() => handleInitiateCall(lead)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors"

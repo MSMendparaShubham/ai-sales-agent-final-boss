@@ -93,6 +93,15 @@ export interface OpportunityItem {
     rawEvidence: string | null;
     confidenceScore: number;
   }>;
+  discoveryResults?: Array<{
+    id?: string;
+    sourceName?: string;
+    sourceUrl?: string | null;
+    rawData?: string;
+    status?: string;
+    confidence?: number;
+    rawSnippet?: string;
+  }>;
   qualifications: Array<{
     id: string;
     budgetFit: number;

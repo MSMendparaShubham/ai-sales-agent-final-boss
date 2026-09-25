@@ -59,6 +59,10 @@ export const envSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional(),
 
+  // Apollo & Serper Lead Discovery
+  APOLLO_API_KEY: z.string().optional(),
+  SERPER_API_KEY: z.string().optional(),
+
   // Auth
   BETTER_AUTH_SECRET: z.string().default('development_secret_do_not_use_in_prod'),
 });
@@ -114,6 +118,9 @@ export function getRawEnv(): Record<string, any> {
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
     NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+
+    APOLLO_API_KEY: process.env.APOLLO_API_KEY,
+    SERPER_API_KEY: process.env.SERPER_API_KEY,
 
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   };
