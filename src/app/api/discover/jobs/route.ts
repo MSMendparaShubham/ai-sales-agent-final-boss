@@ -31,9 +31,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('[Discover API] Received scan job payload:', body);
 
-    const { keyword, description, industry, location, channel, source } = body;
-    const searchTerm = (keyword || description || '').trim();
-    const selectedSource = channel || source || 'ALL';
+    const { keyword, description, query, industry, location, channel, source } = body;
+    const searchTerm = (keyword || description || query || '').trim();
+    const selectedSource = channel || source || 'LINKEDIN';
+    console.log('[Discover API Request Channel]:', selectedSource);
 
     const job = await prisma.discoveryJob.create({
       data: {
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       keyword: searchTerm,
       industry,
       location,
+      channel: selectedSource,
     });
 
     console.log('[Discover API] Scan completed successfully. Discovered count:', result?.totalDiscovered || 0);

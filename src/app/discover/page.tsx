@@ -89,13 +89,14 @@ export default function DiscoveryPage() {
     setToastMessage(null);
 
     try {
-      const res = await fetch('/api/discover/jobs', {
+      const res = await fetch('/api/discover/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: source,
           source: source,
           keyword: keyword || '',
+          query: keyword || '',
           description: keyword || '',
           industry: industry || '',
           location: location || '',
@@ -456,7 +457,7 @@ export default function DiscoveryPage() {
                   lead.salesBrief ||
                   'Evaluating enterprise partners...';
 
-                const targetLinkedinUrl = lead.linkedinUrl
+                const targetProfileUrl = lead.linkedinUrl
                   ? lead.linkedinUrl.startsWith('http')
                     ? lead.linkedinUrl
                     : `https://${lead.linkedinUrl}`
@@ -467,7 +468,22 @@ export default function DiscoveryPage() {
                 const originalPostUrl =
                   lead.discoveryResults?.[0]?.sourceUrl ||
                   (lead as any).sourceUrl ||
-                  targetLinkedinUrl;
+                  targetProfileUrl;
+
+                const isTwitter =
+                  lead.source?.platform === 'X' ||
+                  lead.source?.platform === 'TWITTER' ||
+                  targetProfileUrl.includes('x.com') ||
+                  targetProfileUrl.includes('twitter.com');
+
+                const excerptTitle = isTwitter
+                  ? 'Verbatim X / Twitter Buying Signal'
+                  : lead.source?.platform === 'WEBSITE'
+                  ? 'Corporate RFP Procurement Signal'
+                  : 'Verbatim LinkedIn RFP Signal';
+
+                const authorProfileLabel = isTwitter ? 'View Profile on X' : 'View Author Profile';
+                const livePostLabel = isTwitter ? 'View Post on X' : 'View Live Post';
 
                 return (
                   <Card
@@ -496,7 +512,7 @@ export default function DiscoveryPage() {
                               Verified Company
                             </span>
                           </Link>
-                          <StatusBadge status={lead.source?.platform || 'LINKEDIN'} type="source" />
+                          <StatusBadge status={lead.source?.platform || (isTwitter ? 'X' : 'LINKEDIN')} type="source" />
                         </div>
                         <p className="text-xs text-[#627D98] mt-1 font-medium flex items-center gap-1.5">
                           <span>{lead.company.industry}</span>
@@ -518,9 +534,13 @@ export default function DiscoveryPage() {
                     </div>
 
                     {/* Post Excerpt Box */}
-                    <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded-md my-2.5">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
-                        <span>Verbatim LinkedIn RFP Signal</span>
+                    <div className={`p-3 rounded-md my-2.5 border-l-4 ${
+                      isTwitter ? 'bg-slate-900/5 border-slate-900' : 'bg-slate-50 border-blue-500'
+                    }`}>
+                      <div className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider mb-1 ${
+                        isTwitter ? 'text-slate-900' : 'text-blue-600'
+                      }`}>
+                        <span>{excerptTitle}</span>
                       </div>
                       <p className="text-sm text-slate-800 italic">
                         &ldquo;{rawEvidence}&rdquo;
@@ -531,12 +551,16 @@ export default function DiscoveryPage() {
                     <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs flex-wrap gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <a
-                          href={targetLinkedinUrl}
+                          href={targetProfileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
+                            isTwitter
+                              ? 'text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-300'
+                              : 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-200'
+                          }`}
                         >
-                          <span>View Author Profile</span>
+                          <span>{authorProfileLabel}</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
 
@@ -547,7 +571,7 @@ export default function DiscoveryPage() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200 transition-colors"
                           >
-                            <span>View Live Post</span>
+                            <span>{livePostLabel}</span>
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         )}

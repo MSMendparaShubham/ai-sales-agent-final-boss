@@ -26,12 +26,13 @@ export function StatusBadge({ status, type = 'status', className }: StatusBadgeP
         break;
     }
   } else if (type === 'source') {
-    switch (status) {
+    switch (status.toUpperCase()) {
       case 'LINKEDIN':
         variantClass = 'bg-blue-500/15 text-blue-700 border-blue-500/30';
         break;
       case 'X':
-        variantClass = 'bg-slate-800/10 text-slate-700 border-slate-300/80';
+      case 'TWITTER':
+        variantClass = 'bg-slate-900 text-white border-slate-700 shadow-sm font-semibold';
         break;
       case 'WEBSITE':
         variantClass = 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30';
@@ -76,8 +77,15 @@ export function StatusBadge({ status, type = 'status', className }: StatusBadgeP
   }
 
   let label = status.replace(/_/g, ' ');
-  if (type === 'source' && (status === 'LINKEDIN' || status === 'LinkedIn')) {
-    label = 'LinkedIn Public Post';
+  if (type === 'source') {
+    const upper = status.toUpperCase();
+    if (upper === 'LINKEDIN') {
+      label = 'LinkedIn Public Post';
+    } else if (upper === 'X' || upper === 'TWITTER') {
+      label = 'X (Twitter)';
+    } else if (upper === 'WEBSITE') {
+      label = 'Corporate RFP Portal';
+    }
   }
 
   return (
