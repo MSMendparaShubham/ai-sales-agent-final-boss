@@ -64,25 +64,27 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
 
       const payload: Record<string, any> = {
         api_key: rawKey,
+        q_keywords: cleanedKeyword,
         page: 1,
         per_page: MAX_RESULTS_PER_SCAN,
-        person_titles: [
-          'Chief Technology Officer',
-          'VP of Engineering',
-          'Director of IT',
-          'VP of Technology',
-          'Chief Information Officer',
-          'Head of Sales',
-          'VP Revenue',
-          'IT Director',
-        ],
       };
 
-      if (cleanedKeyword) {
-        payload.q_keywords = cleanedKeyword;
+      // Add industry / title filter if provided and not generic
+      if (industry && industry !== 'ALL' && industry !== 'All Industries') {
+        payload.person_titles = [cleanedKeyword];
       }
-      if (location && location !== 'ALL') {
-        payload.person_locations = [location];
+
+      // Map location to Apollo's expected array format
+      if (location && location !== 'ALL' && location !== 'All Regions') {
+        if (location.includes('United States')) {
+          payload.person_locations = ['United States'];
+        } else if (location.includes('India')) {
+          payload.person_locations = ['India'];
+        } else if (location.includes('United Kingdom')) {
+          payload.person_locations = ['United Kingdom'];
+        } else {
+          payload.person_locations = [location];
+        }
       }
 
       const res = await fetch('https://api.apollo.io/v1/mixed_people/search', {
@@ -95,43 +97,55 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
         body: JSON.stringify(payload),
       });
 
-      console.log('[Apollo Discovery] HTTP Status:', res.status);
+      console.log('[Apollo Live Search] HTTP Status:', res.status);
       const resData = await res.json();
 
       if (!res.ok) {
-        console.error('[Apollo Discovery] Error response:', res.status, resData);
+        console.error('[Apollo Live Search] Error response:', res.status, resData);
         return [];
       }
 
       const rawPeople: any[] = resData.people || resData.contacts || [];
-      console.log(`[Apollo Discovery] Received ${rawPeople.length} people from Apollo.`);
+      console.log('[Apollo Live Search] People returned:', rawPeople.length);
+
+      if (rawPeople.length > 0) {
+        console.log('[Apollo Sample Person]:', {
+          name: `${rawPeople[0].first_name || ''} ${rawPeople[0].last_name || ''}`.trim() || rawPeople[0].name,
+          linkedin: rawPeople[0].linkedin_url,
+          company: rawPeople[0].organization?.name || rawPeople[0].company,
+        });
+      }
 
       if (rawPeople.length === 0) {
-        console.log('[Apollo Discovery] 0 people returned matching the search criteria.');
+        console.log('[Apollo Live Search] 0 people returned matching the search criteria.');
         return [];
       }
 
-      // Filter toward results that have a populated linkedin_url (or name) and strictly cap to MAX_RESULTS_PER_SCAN
+      // Filter toward results that have a real, reachable LinkedIn profile link
       const validPeople = rawPeople
-        .filter((p: any) => Boolean(p.linkedin_url || p.name))
+        .filter((p: any) => {
+          const url = p.linkedin_url;
+          if (!url || typeof url !== 'string') return false;
+          const trimmed = url.trim().toLowerCase();
+          if (trimmed === '#' || trimmed === '' || trimmed.includes('example.com')) return false;
+          return true;
+        })
         .slice(0, MAX_RESULTS_PER_SCAN);
 
-      console.log(`[Apollo Discovery] Mapped ${validPeople.length} valid LinkedIn candidate leads.`);
+      console.log(`[Apollo Live Search] Mapped ${validPeople.length} valid LinkedIn candidate leads.`);
 
       return validPeople.map((person: any) => {
-        let linkedinUrl = person.linkedin_url;
-        if (linkedinUrl && typeof linkedinUrl === 'string') {
-          linkedinUrl = linkedinUrl.trim();
-          if (linkedinUrl && !linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
-            linkedinUrl = `https://${linkedinUrl}`;
+        let realLinkedInUrl = person.linkedin_url;
+        if (realLinkedInUrl && typeof realLinkedInUrl === 'string') {
+          realLinkedInUrl = realLinkedInUrl.trim();
+          if (!realLinkedInUrl.startsWith('http')) {
+            realLinkedInUrl = `https://${realLinkedInUrl}`;
           }
-        } else {
-          linkedinUrl = undefined;
         }
 
         const personName =
+          `${person.first_name || ''} ${person.last_name || ''}`.trim() ||
           person.name ||
-          [person.first_name, person.last_name].filter(Boolean).join(' ') ||
           'Executive Contact';
         const personTitle = person.title || 'Executive Decision Maker';
         const companyName =
@@ -139,13 +153,13 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
 
         return {
           sourceName: 'LinkedIn Executive Network',
-          sourceUrl: linkedinUrl || 'https://linkedin.com',
+          sourceUrl: realLinkedInUrl || 'https://linkedin.com',
           confidence: 90,
           rawData: {
             name: personName,
             title: personTitle,
             email: person.email || undefined,
-            linkedinUrl,
+            linkedinUrl: realLinkedInUrl,
             phone:
               person.phone_numbers?.[0]?.sanitized_number ||
               person.sanitized_phone ||
@@ -156,7 +170,9 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
               domain: person.organization?.primary_domain || undefined,
               industry:
                 person.organization?.industry ||
-                (industry && industry !== 'ALL' ? industry : 'Information Technology & Services'),
+                (industry && industry !== 'ALL' && industry !== 'All Industries'
+                  ? industry
+                  : 'Information Technology & Services'),
               size: person.organization?.estimated_num_employees
                 ? String(person.organization.estimated_num_employees)
                 : '50-200',
@@ -168,7 +184,9 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
                 ]
                   .filter(Boolean)
                   .join(', ') ||
-                (location && location !== 'ALL' ? location : 'San Francisco, CA'),
+                (location && location !== 'ALL' && location !== 'All Regions'
+                  ? location
+                  : 'United States'),
               websiteUrl: person.organization?.website_url || undefined,
             },
             requirement: {
@@ -176,20 +194,24 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
                 ? `${cleanedKeyword} Enterprise Modernization Initiative`
                 : `${personTitle} Vendor Evaluation`,
               description: `Executive ${personName} at ${companyName} initiated vendor evaluation for ${
-                industry && industry !== 'ALL' ? industry : 'technology infrastructure'
+                industry && industry !== 'ALL' && industry !== 'All Industries'
+                  ? industry
+                  : 'technology infrastructure'
               }.`,
               category:
                 person.organization?.industry ||
-                (industry && industry !== 'ALL' ? industry : 'Information Technology & Services'),
-              rawEvidence: linkedinUrl
-                ? `Public executive signal verified on LinkedIn: ${linkedinUrl}`
+                (industry && industry !== 'ALL' && industry !== 'All Industries'
+                  ? industry
+                  : 'Information Technology & Services'),
+              rawEvidence: realLinkedInUrl
+                ? `Public executive signal verified on LinkedIn: ${realLinkedInUrl}`
                 : 'Public executive procurement signal detected.',
             },
           },
         };
       });
     } catch (err: any) {
-      console.error('[Apollo Discovery Error]:', err?.message || err);
+      console.error('[Apollo Live Search Error]:', err?.message || err);
       return [];
     }
   }

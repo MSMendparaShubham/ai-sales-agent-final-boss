@@ -26,9 +26,9 @@ import { ImportCenter } from '@/components/discover/import-center';
 export default function DiscoveryPage() {
   const [activeTab, setActiveTab] = useState<'ai' | 'import'>('ai');
   const [keyword, setKeyword] = useState('');
-  const [source, setSource] = useState('ALL');
-  const [industry, setIndustry] = useState('ALL');
-  const [location, setLocation] = useState('ALL');
+  const [source, setSource] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [location, setLocation] = useState('');
   const [results, setResults] = useState<OpportunityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
@@ -49,9 +49,9 @@ export default function DiscoveryPage() {
       const params = new URLSearchParams();
       const currentKeyword = overrideKeyword !== undefined ? overrideKeyword : keyword;
       if (currentKeyword) params.set('search', currentKeyword);
-      if (source !== 'ALL') params.set('source', source);
-      if (industry !== 'ALL') params.set('industry', industry);
-      if (location !== 'ALL') params.set('location', location);
+      if (source && source !== 'ALL') params.set('source', source);
+      if (industry && industry !== 'ALL' && industry !== 'All Industries') params.set('industry', industry);
+      if (location && location !== 'ALL' && location !== 'All Regions') params.set('location', location);
       params.set('limit', '50');
 
       console.log('[Discover UI] Fetching leads with query:', params.toString());
@@ -132,7 +132,12 @@ export default function DiscoveryPage() {
     }
   };
 
-  const canTriggerScan = Boolean(keyword && keyword.trim().length > 0);
+  const canTriggerScan = Boolean(
+    keyword && keyword.trim().length > 0 &&
+    source && source !== '' && source !== 'ALL' &&
+    industry && industry !== '' && industry !== 'ALL' && industry !== 'All Industries' &&
+    location && location !== '' && location !== 'ALL' && location !== 'All Regions'
+  );
 
   const keywordPresets = [
     'SharePoint Migration',
@@ -156,14 +161,12 @@ export default function DiscoveryPage() {
   ];
 
   const sources = [
-    { key: 'ALL', label: 'All Public Channels' },
     { key: 'LINKEDIN', label: 'LinkedIn Executive RFPs' },
     { key: 'X', label: 'X / Twitter Signals' },
     { key: 'WEBSITE', label: 'Corporate RFP Portals' },
   ];
 
   const industries = [
-    'ALL',
     'Information Technology & Services',
     'Software Development',
     'Financial Services & FinTech',
@@ -173,7 +176,6 @@ export default function DiscoveryPage() {
   ];
 
   const locations = [
-    'ALL',
     'United States',
     'United Kingdom & Europe',
     'India & APAC',
@@ -231,7 +233,7 @@ export default function DiscoveryPage() {
             onClick={handleManualScan}
             disabled={!canTriggerScan || isScanning || activeTab !== 'ai'}
             size="sm"
-            title={!canTriggerScan ? 'Please enter or select a search keyword to trigger scan' : undefined}
+            title={!canTriggerScan ? 'Please fill in all 4 search criteria to trigger scan.' : undefined}
             className={`text-xs font-semibold flex items-center gap-2 shadow-sm transition-all ${
               !canTriggerScan || isScanning || activeTab !== 'ai'
                 ? 'bg-slate-200 text-slate-400 border border-slate-300 opacity-60 cursor-not-allowed hover:bg-slate-200'
@@ -243,7 +245,7 @@ export default function DiscoveryPage() {
           </Button>
           {!canTriggerScan && activeTab === 'ai' && (
             <span className="text-[10px] text-[#627D98] font-medium">
-              Please enter or select a search keyword to trigger scan
+              Please fill in all 4 search criteria to trigger scan.
             </span>
           )}
         </div>
@@ -284,17 +286,16 @@ export default function DiscoveryPage() {
               <div className="md:col-span-5 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold text-[#627D98] flex items-center gap-1">
-                    <span>Keyword / Requirement</span>
-                    <span className="text-red-500">*</span>
+                    <span>Keyword *</span>
                   </label>
-                  <span className="text-[10px] text-[#2563EB] font-semibold">Required to Scan</span>
+                  <span className="text-[10px] text-[#2563EB] font-semibold">Required</span>
                 </div>
                 <div className="space-y-1.5">
                   <div className="relative">
                     <Search className="w-4 h-4 text-[#627D98] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <Input
                       type="text"
-                      placeholder="e.g. SharePoint, Cloud Migration, Head of IT"
+                      placeholder="e.g. SharePoint Migration, Cloud Modernization"
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
                       onKeyDown={(e) => {
@@ -321,6 +322,9 @@ export default function DiscoveryPage() {
                     onChange={(e) => {
                       if (e.target.value) {
                         setKeyword(e.target.value);
+                        if (!source) setSource('LINKEDIN');
+                        if (!industry) setIndustry('Information Technology & Services');
+                        if (!location) setLocation('United States');
                       }
                     }}
                     className="w-full h-8 bg-slate-50 border border-[#D9E2EC] rounded-md px-2.5 text-[11px] text-[#102A43] focus:outline-none focus:border-[#2563EB] font-medium"
@@ -338,13 +342,14 @@ export default function DiscoveryPage() {
               {/* Public Channel */}
               <div className="md:col-span-3 space-y-1.5">
                 <label className="text-[11px] font-bold text-[#627D98] block">
-                  Public Channel
+                  Public Channel *
                 </label>
                 <select
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
                   className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-semibold"
                 >
+                  <option value="">Select Channel...</option>
                   {sources.map((s) => (
                     <option key={s.key} value={s.key}>
                       {s.label}
@@ -356,16 +361,17 @@ export default function DiscoveryPage() {
               {/* Target Industry */}
               <div className="md:col-span-2 space-y-1.5">
                 <label className="text-[11px] font-bold text-[#627D98] block">
-                  Target Industry
+                  Target Industry *
                 </label>
                 <select
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
                   className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-medium"
                 >
+                  <option value="">Select Target Industry...</option>
                   {industries.map((ind) => (
                     <option key={ind} value={ind}>
-                      {ind === 'ALL' ? 'All Industries' : ind}
+                      {ind}
                     </option>
                   ))}
                 </select>
@@ -374,16 +380,17 @@ export default function DiscoveryPage() {
               {/* Target Location */}
               <div className="md:col-span-2 space-y-1.5">
                 <label className="text-[11px] font-bold text-[#627D98] block">
-                  Target Location
+                  Target Location *
                 </label>
                 <select
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   className="w-full h-9 bg-white border border-[#D9E2EC] rounded-md px-2.5 text-xs text-[#102A43] focus:outline-none focus:border-[#2563EB] font-sans font-medium"
                 >
+                  <option value="">Select Target Location...</option>
                   {locations.map((loc) => (
                     <option key={loc} value={loc}>
-                      {loc === 'ALL' ? 'All Regions' : loc}
+                      {loc}
                     </option>
                   ))}
                 </select>
@@ -410,7 +417,12 @@ export default function DiscoveryPage() {
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setKeyword(p)}
+                  onClick={() => {
+                    setKeyword(p);
+                    if (!source) setSource('LINKEDIN');
+                    if (!industry) setIndustry('Information Technology & Services');
+                    if (!location) setLocation('United States');
+                  }}
                   className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
                     keyword === p
                       ? 'bg-[#2563EB] text-white shadow-xs'
@@ -449,9 +461,9 @@ export default function DiscoveryPage() {
                   size="sm"
                   onClick={() => {
                     setKeyword('');
-                    setSource('ALL');
-                    setIndustry('ALL');
-                    setLocation('ALL');
+                    setSource('');
+                    setIndustry('');
+                    setLocation('');
                   }}
                   className="text-xs font-semibold border-slate-200 bg-white hover:bg-slate-50 text-[#102A43]"
                 >
@@ -462,6 +474,8 @@ export default function DiscoveryPage() {
                   onClick={() => {
                     setKeyword('SharePoint Migration');
                     setSource('LINKEDIN');
+                    setIndustry('Information Technology & Services');
+                    setLocation('United States');
                   }}
                   className="text-xs font-semibold bg-[#2563EB] hover:bg-[#1d4ed8] text-white"
                 >
@@ -531,14 +545,14 @@ export default function DiscoveryPage() {
                             href={cleanLinkedinUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#2563EB] hover:text-[#1d4ed8] hover:underline flex items-center gap-1 text-[11px] font-semibold"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
                           >
-                            <span>LinkedIn Profile</span>
-                            <ExternalLink className="w-3 h-3" />
+                            <span>View LinkedIn Profile</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         ) : (
-                          <span className="text-slate-400 flex items-center gap-1 text-[11px] font-medium cursor-not-allowed">
-                            <span>No Public Profile Link</span>
+                          <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                            No LinkedIn Profile Linked
                           </span>
                         )}
                       </div>
