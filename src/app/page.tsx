@@ -234,7 +234,7 @@ export default function LandingPage() {
                   className="h-12 px-6 rounded-xl border border-[#232B3D] bg-[#131826]/70 hover:bg-[#131826] text-white text-sm font-medium flex items-center justify-center gap-2.5 transition-all hover:border-slate-600"
                 >
                   <Play className="w-4 h-4 fill-white" />
-                  <span>Watch Demo Cockpit</span>
+                  <span>Explore Live AI Cockpit</span>
                 </Link>
               </div>
 
