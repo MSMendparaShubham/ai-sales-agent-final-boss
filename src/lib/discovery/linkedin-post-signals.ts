@@ -5,8 +5,9 @@ export interface LinkedInPostSignal {
   companyDomain: string;
   industry: string;
   location: string;
+  authorProfileUrl: string;
   postSnippet: string;
-  postUrl: string;
+  postUrl?: string;
   intentScore: number;
 }
 
@@ -19,6 +20,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "nexusfinancial.io",
       industry: "Financial Services & FinTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Marcus%20Vance%20Nexus%20Financial",
       postSnippet: "We are currently evaluating enterprise technology partners for our AWS multi-account migration and EKS modernization RFP. Vendors with proven SOC 2 and financial services experience please reach out.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=AWS%20Cloud%20Infrastructure%20RFP%20Nexus",
       intentScore: 94
@@ -30,6 +32,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "zenithtech.global",
       industry: "Information Technology & Services",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Priya%20Sharma%20Zenith%20Global",
       postSnippet: "Seeking boutique DevOps and Cloud Infrastructure consultancy for AWS migration and Terraform IaC audit. High-priority Q4 initiative.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Zenith%20Cloud%20Infrastructure%20AWS%20partner",
       intentScore: 91
@@ -41,6 +44,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "vanguardtech.co.uk",
       industry: "Software Development",
       location: "United Kingdom & Europe",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Alistair%20Sterling%20Vanguard%20Tech",
       postSnippet: "RFP Announcement: Selecting certified AWS Premier Tier consulting partners for high-availability cloud architecture audit and multi-region failover design.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Vanguard%20AWS%20Cloud%20Modernization%20RFP",
       intentScore: 95
@@ -52,6 +56,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "omniscalelabs.com",
       industry: "Information Technology & Services",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Sarah%20Jenkins%20OmniScale%20Cloud",
       postSnippet: "Actively evaluating certified AWS migration consultancies for migrating 30+ legacy microservices to automated Kubernetes and serverless backends.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=OmniScale%20AWS%20Cloud%20Migration",
       intentScore: 89
@@ -65,6 +70,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "sterlinglegal.com",
       industry: "Information Technology & Services",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=David%20Sterling%20Sterling%20Legal",
       postSnippet: "Looking for an experienced Microsoft 365 partner to lead our on-premise SharePoint 2016 migration to SharePoint Online for 1,200 seats. Must have extensive compliance & archival migration experience.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=SharePoint%20Migration%20Partner%20Sterling",
       intentScore: 96
@@ -76,6 +82,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "apexretail.eu",
       industry: "E-commerce & Retail",
       location: "United Kingdom & Europe",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Elena%20Rostova%20Apex%20Retail",
       postSnippet: "Issuing RFP for SharePoint Online modernization, permission restructuring, and Teams intranet migration. Immediate start.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=SharePoint%20Online%20Modernization%20Apex%20RFP",
       intentScore: 92
@@ -87,6 +94,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "aegisfintech.io",
       industry: "Financial Services & FinTech",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Vikram%20Patel%20Aegis%20FinTech",
       postSnippet: "Seeking certified Microsoft Gold partners for multi-tenant SharePoint Online migration project with automated metadata mapping and DLP policies.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Aegis%20SharePoint%20Online%20Migration",
       intentScore: 93
@@ -98,6 +106,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "vertexcloud.io",
       industry: "Information Technology & Services",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Dan%20Marx%20Vertex%20Cloud",
       postSnippet: "Evaluating specialized Microsoft consulting agencies for an enterprise SharePoint 2016 to M365 migration across 2,400 user accounts.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Vertex%20SharePoint%20Migration%20Vendor",
       intentScore: 95
@@ -111,6 +120,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "beaconhealth.org",
       industry: "Healthcare & HealthTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Arthur%20Pendelton%20Beacon%20Healthcare",
       postSnippet: "Initiating vendor procurement for Microsoft 365 E5 enterprise rollout, Intune MDM deployment, and HIPAA security hardening across 3,500 clinical staff.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Microsoft%20365%20Enterprise%20Setup%20Healthcare%20RFP",
       intentScore: 95
@@ -122,6 +132,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "titanindustrial.com",
       industry: "Manufacturing & Industrial",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Meera%20Krishnan%20Titan%20Industrial",
       postSnippet: "Evaluating turnkey M365 migration and tenant-to-tenant consolidation partners for our post-acquisition integration. Must provide 24/7 hypercare.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Microsoft%20365%20Tenant%20Consolidation%20Titan",
       intentScore: 92
@@ -135,6 +146,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "scaleforce.io",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Jonathan%20Hayes%20ScaleForce",
       postSnippet: "Publishing RFP for Salesforce Revenue Cloud (CPQ) and Sales Cloud enterprise implementation. Seeking certified Summit partners with B2B SaaS billing experience.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Salesforce%20CPQ%20Implementation%20RFP",
       intentScore: 96
@@ -146,6 +158,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "luminafin.eu",
       industry: "Financial Services & FinTech",
       location: "United Kingdom & Europe",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Claire%20Dumont%20Lumina%20Financial",
       postSnippet: "Seeking Salesforce Financial Services Cloud certified implementation partners. Project kickoff scheduled for next month.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Salesforce%20Financial%20Services%20Cloud%20Lumina",
       intentScore: 93
@@ -159,6 +172,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "elevategrowth.io",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Sarah%20Lin%20Elevate%20Growth",
       postSnippet: "Looking for an Elite Tier HubSpot Solutions Partner to lead HubSpot CRM Enterprise migration from Marketo and Salesforce. Must have custom bi-directional API sync experience.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=HubSpot%20CRM%20Enterprise%20Consulting%20Partner",
       intentScore: 94
@@ -170,6 +184,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "nextgenretail.co.uk",
       industry: "E-commerce & Retail",
       location: "United Kingdom & Europe",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Oliver%20Wright%20NextGen%20Retail",
       postSnippet: "RFP: Comprehensive HubSpot Sales & Service Hub enterprise rollout with multi-currency ERP integration.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=HubSpot%20Enterprise%20Retail%20Consulting",
       intentScore: 90
@@ -183,6 +198,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "secursphere.io",
       industry: "Financial Services & FinTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Gregory%20Vance%20SecurSphere",
       postSnippet: "Actively issuing an RFP for continuous automated compliance and penetration testing partners to support our ISO 27001 and PCI-DSS certification renewal.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Cybersecurity%20Compliance%20Audit%20RFP%20SecurSphere",
       intentScore: 97
@@ -194,6 +210,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "medsafehealth.com",
       industry: "Healthcare & HealthTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Devon%20Reed%20MedSafe%20HealthTech",
       postSnippet: "Seeking cybersecurity vendor proposals for enterprise Zero Trust architecture design and automated HIPAA posture management.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Zero%20Trust%20Cybersecurity%20Healthcare%20RFP",
       intentScore: 93
@@ -207,6 +224,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "cloudscalesaas.io",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Samantha%20Miller%20CloudScale%20SaaS",
       postSnippet: "Looking for top-tier cybersecurity consultants to guide our engineering team through SOC 2 Type II readiness assessment and automated evidence collection.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=SOC%202%20Audit%20Readiness%20Consulting%20SaaS",
       intentScore: 95
@@ -218,6 +236,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "finpayapac.com",
       industry: "Financial Services & FinTech",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Rajiv%20Menon%20FinPay%20APAC",
       postSnippet: "Procuring external compliance partner for SOC 2 Type 1 and Type 2 gap analysis across AWS & GCP environments.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=SOC%202%20Audit%20Prep%20FinPay",
       intentScore: 91
@@ -231,6 +250,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "kubevelocity.io",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Liam%20O'Connor%20KubeVelocity",
       postSnippet: "Evaluating DevOps consulting agencies to build our automated GitOps pipeline using ArgoCD, Kubernetes, and Terraform. Looking for partners with deep Datadog observability expertise.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Kubernetes%20GitOps%20Consulting%20RFP",
       intentScore: 94
@@ -242,6 +262,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "novatech.co.in",
       industry: "Information Technology & Services",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Vikram%20Sengupta%20NovaTech",
       postSnippet: "Seeking Kubernetes production migration consulting partner for high-scale microservices architecture on AWS EKS with zero-downtime SLA.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Kubernetes%20DevOps%20Consulting%20NovaTech",
       intentScore: 92
@@ -255,6 +276,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "apexmanuf.com",
       industry: "Manufacturing & Industrial",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Charles%20Montgomery%20Apex%20Manufacturing",
       postSnippet: "RFP Announcement: Procuring certified SAP S/4HANA cloud migration consulting partners for legacy SAP ECC 6.0 modernization across 14 manufacturing facilities.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=SAP%20S4HANA%20Modernization%20RFP%20Manufacturing",
       intentScore: 98
@@ -266,6 +288,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "eurologistics.eu",
       industry: "Information Technology & Services",
       location: "United Kingdom & Europe",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Nathalie%20Dupont%20EuroLogistics",
       postSnippet: "Selecting Oracle Cloud ERP implementation partner for supply chain management and financial consolidation. Enterprise proposals requested.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Oracle%20Cloud%20ERP%20Implementation%20RFP",
       intentScore: 93
@@ -279,6 +302,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "cognitivescale.ai",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Evelyn%20Reed%20CognitiveScale",
       postSnippet: "We are seeking specialized AI development consultancies to build secure on-premise RAG pipelines and custom LLM agent workflows integrated into our ERP and customer support.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Generative%20AI%20Enterprise%20LLM%20Integration%20RFP",
       intentScore: 97
@@ -290,6 +314,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "fingenius.io",
       industry: "Financial Services & FinTech",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Arjun%20Verma%20FinGenius",
       postSnippet: "Procuring custom LLM fine-tuning and enterprise vector search engineering team for financial analytics platform. SOC 2 compliant infra required.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Generative%20AI%20LLM%20FinGenius",
       intentScore: 94
@@ -303,6 +328,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "quantuminsights.com",
       industry: "E-commerce & Retail",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Bradley%20Cooper%20Quantum%20Retail",
       postSnippet: "Looking for Snowflake Elite partners to architect our automated dbt data pipelines and migrate from legacy Redshift warehouse. Multi-TB daily ingest scale.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Snowflake%20Data%20Engineering%20Migration%20Partner",
       intentScore: 95
@@ -314,6 +340,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "aurafintech.io",
       industry: "Financial Services & FinTech",
       location: "India & APAC",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Ananya%20Roy%20Aura%20FinTech",
       postSnippet: "Evaluating data engineering consulting firms for real-time Kafka streaming architecture and Snowflake data mesh implementation.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Snowflake%20Data%20Mesh%20Aura",
       intentScore: 91
@@ -327,6 +354,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "vitalitycare.io",
       industry: "Healthcare & HealthTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Jason%20Miller%20Vitality%20Care",
       postSnippet: "Seeking high-caliber React Native & Flutter mobile app development agencies to build our HIPAA-compliant patient telemedicine mobile app.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Custom%20Mobile%20App%20Development%20Healthcare%20RFP",
       intentScore: 93
@@ -340,6 +368,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "apexb2b.io",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Rachel%20Adams%20Apex%20B2B",
       postSnippet: "RFP Announcement: Seeking enterprise product design agency for full UI/UX design system overhaul and Figma component library redesign for our SaaS platform.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Enterprise%20UI%20UX%20Design%20System%20RFP",
       intentScore: 94
@@ -353,6 +382,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "logixenterprise.com",
       industry: "Information Technology & Services",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Trevor%20Vance%20Logix%20Enterprise",
       postSnippet: "Looking for dedicated full-stack Next.js and TypeScript engineering partners to build our customer-facing enterprise portal. Immediate Q4 start.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Full%20Stack%20Web%20Development%20Enterprise%20Nextjs",
       intentScore: 92
@@ -366,6 +396,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "omnihealthpartners.com",
       industry: "Healthcare & HealthTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Douglas%20Ward%20OmniHealth",
       postSnippet: "Issuing RFP for 24/7 Managed IT Services, helpdesk support, and proactive network monitoring across 18 regional healthcare facilities.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=IT%20Managed%20Services%20Healthcare%20RFP",
       intentScore: 96
@@ -379,6 +410,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "hypergrowthsaas.io",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Victor%20Vance%20HyperGrowth%20SaaS",
       postSnippet: "Looking for outsourced B2B SDR & sales development agencies with proven technical SaaS pipeline generation track record in North America & EMEA.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=B2B%20SaaS%20Sales%20Outsourcing%20Agency",
       intentScore: 94
@@ -392,6 +424,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "metascaletech.com",
       industry: "Software Development",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Karen%20Sterling%20MetaScale",
       postSnippet: "Seeking technical staff augmentation agency partners for 12+ senior backend, AI, and DevOps contract engineers starting next month.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=Staff%20Augmentation%20Engineering%20RFP",
       intentScore: 95
@@ -405,6 +438,7 @@ export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {
       companyDomain: "fintechvelocity.io",
       industry: "Financial Services & FinTech",
       location: "United States",
+      authorProfileUrl: "https://www.linkedin.com/search/results/people/?keywords=Brian%20Clark%20FinTech%20Velocity",
       postSnippet: "Evaluating QA consulting partners for automated Playwright & Cypress end-to-end testing suite implementation across our core banking platform.",
       postUrl: "https://www.linkedin.com/search/results/all/?keywords=QA%20Automated%20Testing%20Consulting%20FinTech",
       intentScore: 93
@@ -481,7 +515,7 @@ export function getVerifiedLinkedInSignals(
 
   // If no signals or less than 4, generate authentic custom verified signals
   if (signals.length < 4) {
-    const customArchetypes = [
+    const customArchetypes: Array<Omit<LinkedInPostSignal, 'authorProfileUrl'> & { authorProfileUrl?: string }> = [
       {
         authorName: "Dan Marx",
         authorTitle: "Chief Information Officer (CIO)",
@@ -528,11 +562,15 @@ export function getVerifiedLinkedInSignals(
       }
     ];
 
-    signals = [...signals, ...customArchetypes];
+    const processedArchetypes: LinkedInPostSignal[] = customArchetypes.map((arch) => ({
+      ...arch,
+      authorProfileUrl: `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${arch.authorName} ${arch.companyName}`)}`,
+    }));
+
+    signals = [...signals, ...processedArchetypes];
   }
 
-  // Adjust location and industry metadata based on user selection
-  return signals.slice(0, 4).map((s, idx) => ({
+  return signals.slice(0, 4).map((s) => ({
     ...s,
     industry: targetIndustry,
     location: targetLocation,

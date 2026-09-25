@@ -82,14 +82,15 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
 
     return signals.slice(0, MAX_RESULTS_PER_SCAN).map((s) => ({
       sourceName: 'LinkedIn Public Post',
-      sourceUrl: s.postUrl,
+      sourceUrl: s.authorProfileUrl || s.postUrl,
       confidence: s.intentScore || 95,
       rawData: {
         name: s.authorName,
         title: s.authorTitle,
         email: `${s.authorName.toLowerCase().replace(/[^a-z]/g, '.')}@${s.companyDomain}`,
-        linkedinUrl: s.postUrl,
-        originalPostUrl: s.postUrl,
+        linkedinUrl: s.authorProfileUrl || s.postUrl,
+        authorProfileUrl: s.authorProfileUrl,
+        originalPostUrl: s.postUrl || s.authorProfileUrl,
         company: {
           name: s.companyName,
           domain: s.companyDomain,

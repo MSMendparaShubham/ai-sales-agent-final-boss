@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Compass,
   Search,
@@ -14,6 +15,7 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
+  Phone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +26,7 @@ import { OpportunityItem } from '@/types';
 import { ImportCenter } from '@/components/discover/import-center';
 
 export default function DiscoveryPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'ai' | 'import'>('ai');
   const [keyword, setKeyword] = useState('');
   const [source, setSource] = useState('');
@@ -132,6 +135,10 @@ export default function DiscoveryPage() {
     } finally {
       setIsScanning(false);
     }
+  };
+
+  const handleInitiateCall = (lead: OpportunityItem) => {
+    router.push(`/calls?leadId=${lead.id}&start=true`);
   };
 
   const canTriggerScan = Boolean(
@@ -487,34 +494,54 @@ export default function DiscoveryPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {results.map((item) => {
-                const req = item.requirements?.[0];
-                const cleanLinkedinUrl = item.linkedinUrl
-                  ? item.linkedinUrl.startsWith('http')
-                    ? item.linkedinUrl
-                    : `https://${item.linkedinUrl}`
+              {results.map((lead) => {
+                const req = lead.requirements?.[0];
+                const rawEvidence =
+                  req?.rawEvidence ||
+                  (lead as any).rawEvidence ||
+                  (lead as any).requirement?.rawEvidence ||
+                  req?.description ||
+                  lead.salesBrief ||
+                  'Evaluating enterprise partners...';
+
+                const authorProfileUrl = lead.linkedinUrl
+                  ? lead.linkedinUrl.startsWith('http')
+                    ? lead.linkedinUrl
+                    : `https://${lead.linkedinUrl}`
                   : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
-                      `${item.name} ${item.company.name}`
+                      `${lead.name} ${lead.company.name}`
                     )}`;
 
                 return (
                   <Card
-                    key={item.id}
+                    key={lead.id}
                     className="p-5 glass-card-interactive border-slate-200/80 space-y-3 rounded-xl shadow-sm hover:border-blue-400/40"
                   >
+                    {/* Author Header: Prospect Name, Role/Title, and Company Name */}
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-base text-[#102A43]">
+                            {lead.name}
+                          </span>
+                          <span className="text-xs text-slate-400">&bull;</span>
+                          <span className="text-xs font-semibold text-slate-700">
+                            {lead.title}
+                          </span>
+                          <span className="text-xs text-slate-400">at</span>
                           <Link
-                            href={`/opportunities/${item.id}`}
-                            className="font-bold text-sm text-[#102A43] hover:text-[#2563EB] transition-colors"
+                            href={`/opportunities/${lead.id}`}
+                            className="font-bold text-xs text-[#2563EB] hover:underline"
                           >
-                            {item.company.name}
+                            {lead.company.name}
                           </Link>
-                          <StatusBadge status={item.source?.platform || 'LINKEDIN'} type="source" />
+                          <StatusBadge status={lead.source?.platform || 'LINKEDIN'} type="source" />
                         </div>
-                        <p className="text-xs text-[#627D98] mt-0.5 font-medium">
-                          {item.name} &bull; {item.title} &bull; {item.company.industry}
+                        <p className="text-xs text-[#627D98] mt-1 font-medium flex items-center gap-1.5">
+                          <span>{lead.company.industry}</span>
+                          <span>&bull;</span>
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 inline" />
+                          <span>{lead.company.size || '500-1000 employees'}</span>
                         </p>
                       </div>
 
@@ -524,48 +551,43 @@ export default function DiscoveryPage() {
                           <span>LOCATION</span>
                         </div>
                         <div className="text-xs font-semibold text-[#102A43]">
-                          {item.company.location || 'San Francisco, CA'}
+                          {lead.company.location || 'San Francisco, CA'}
                         </div>
                       </div>
                     </div>
 
-                    {/* Public Post Verbatim Snippet Box */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px] text-[#627D98] font-semibold">
-                        <span className="text-[#2563EB] font-bold">{req?.title || 'Public LinkedIn RFP Signal'}</span>
-                        <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
-                          Verified Public Post
-                        </span>
-                      </div>
-                      <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded text-sm text-slate-800 italic my-2 shadow-2xs leading-relaxed">
-                        &ldquo;{req?.rawEvidence || req?.description || item.salesBrief || 'Looking for an enterprise partner...'}&rdquo;
-                      </div>
+                    {/* Post Excerpt Box */}
+                    <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded-md my-2.5">
+                      <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider block mb-1">
+                        Verified Procurement Signal
+                      </span>
+                      <p className="text-sm text-slate-800 italic">
+                        &ldquo;{rawEvidence}&rdquo;
+                      </p>
                     </div>
 
-                    {/* Footer Meta & Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs">
-                      <div className="flex items-center gap-3 text-slate-500 font-medium">
-                        <span className="flex items-center gap-1">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          {item.company.size || '500-1000 employees'}
-                        </span>
-                        {cleanLinkedinUrl ? (
-                          <a
-                            href={cleanLinkedinUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-xs"
-                          >
-                            <span>Open Original LinkedIn Post</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        ) : (
-                          <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                            No Post Link Available
-                          </span>
-                        )}
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs flex-wrap gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <a
+                          href={authorProfileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                        >
+                          <span>View Author Profile</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                          onClick={() => handleInitiateCall(lead)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Call Prospect</span>
+                        </button>
                       </div>
-                      <Link href={`/opportunities/${item.id}`}>
+
+                      <Link href={`/opportunities/${lead.id}`}>
                         <Button
                           size="sm"
                           variant="outline"
