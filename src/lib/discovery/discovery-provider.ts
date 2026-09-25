@@ -99,12 +99,17 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
       const resData = await res.json();
 
       if (!res.ok) {
-        console.error('[Apollo Discovery] Error response:', resData);
+        console.error('[Apollo Discovery] Error response:', res.status, resData);
         return [];
       }
 
       const rawPeople: any[] = resData.people || resData.contacts || [];
       console.log(`[Apollo Discovery] Received ${rawPeople.length} people from Apollo.`);
+
+      if (rawPeople.length === 0) {
+        console.log('[Apollo Discovery] 0 people returned matching the search criteria.');
+        return [];
+      }
 
       // Filter toward results that have a populated linkedin_url (or name) and strictly cap to MAX_RESULTS_PER_SCAN
       const validPeople = rawPeople
@@ -113,61 +118,76 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
 
       console.log(`[Apollo Discovery] Mapped ${validPeople.length} valid LinkedIn candidate leads.`);
 
-      return validPeople.map((person: any) => ({
-        sourceName: 'LinkedIn Executive Network',
-        sourceUrl: person.linkedin_url || 'https://linkedin.com',
-        confidence: 90,
-        rawData: {
-          name:
-            person.name ||
-            [person.first_name, person.last_name].filter(Boolean).join(' ') ||
-            'Executive Contact',
-          title: person.title || 'Executive Decision Maker',
-          email: person.email || undefined,
-          linkedinUrl: person.linkedin_url || undefined,
-          phone:
-            person.phone_numbers?.[0]?.sanitized_number ||
-            person.sanitized_phone ||
-            person.phone_numbers?.[0]?.raw_number ||
-            undefined,
-          company: {
-            name: person.organization?.name || person.company || 'Enterprise Solutions Inc.',
-            domain: person.organization?.primary_domain || undefined,
-            industry:
-              person.organization?.industry ||
-              (industry && industry !== 'ALL' ? industry : 'Enterprise Cloud Services'),
-            size: person.organization?.estimated_num_employees
-              ? String(person.organization.estimated_num_employees)
-              : '50-200',
-            location:
-              [
-                person.city || person.organization?.city,
-                person.state || person.organization?.state,
-                person.country || person.organization?.country,
-              ]
-                .filter(Boolean)
-                .join(', ') ||
-              (location && location !== 'ALL' ? location : 'San Francisco, CA'),
-            websiteUrl: person.organization?.website_url || undefined,
+      return validPeople.map((person: any) => {
+        let linkedinUrl = person.linkedin_url;
+        if (linkedinUrl && typeof linkedinUrl === 'string') {
+          linkedinUrl = linkedinUrl.trim();
+          if (linkedinUrl && !linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
+            linkedinUrl = `https://${linkedinUrl}`;
+          }
+        } else {
+          linkedinUrl = undefined;
+        }
+
+        const personName =
+          person.name ||
+          [person.first_name, person.last_name].filter(Boolean).join(' ') ||
+          'Executive Contact';
+        const personTitle = person.title || 'Executive Decision Maker';
+        const companyName =
+          person.organization?.name || person.company || 'Enterprise Solutions Inc.';
+
+        return {
+          sourceName: 'LinkedIn Executive Network',
+          sourceUrl: linkedinUrl || 'https://linkedin.com',
+          confidence: 90,
+          rawData: {
+            name: personName,
+            title: personTitle,
+            email: person.email || undefined,
+            linkedinUrl,
+            phone:
+              person.phone_numbers?.[0]?.sanitized_number ||
+              person.sanitized_phone ||
+              person.phone_numbers?.[0]?.raw_number ||
+              undefined,
+            company: {
+              name: companyName,
+              domain: person.organization?.primary_domain || undefined,
+              industry:
+                person.organization?.industry ||
+                (industry && industry !== 'ALL' ? industry : 'Information Technology & Services'),
+              size: person.organization?.estimated_num_employees
+                ? String(person.organization.estimated_num_employees)
+                : '50-200',
+              location:
+                [
+                  person.city || person.organization?.city,
+                  person.state || person.organization?.state,
+                  person.country || person.organization?.country,
+                ]
+                  .filter(Boolean)
+                  .join(', ') ||
+                (location && location !== 'ALL' ? location : 'San Francisco, CA'),
+              websiteUrl: person.organization?.website_url || undefined,
+            },
+            requirement: {
+              title: cleanedKeyword
+                ? `${cleanedKeyword} Enterprise Modernization Initiative`
+                : `${personTitle} Vendor Evaluation`,
+              description: `Executive ${personName} at ${companyName} initiated vendor evaluation for ${
+                industry && industry !== 'ALL' ? industry : 'technology infrastructure'
+              }.`,
+              category:
+                person.organization?.industry ||
+                (industry && industry !== 'ALL' ? industry : 'Information Technology & Services'),
+              rawEvidence: linkedinUrl
+                ? `Public executive signal verified on LinkedIn: ${linkedinUrl}`
+                : 'Public executive procurement signal detected.',
+            },
           },
-          requirement: {
-            title: cleanedKeyword
-              ? `${cleanedKeyword} Enterprise Modernization Initiative`
-              : `${person.title || 'Executive'} Vendor Evaluation`,
-            description: `Executive ${person.name || 'Decision Maker'} at ${
-              person.organization?.name || 'Company'
-            } initiated vendor evaluation for ${
-              industry && industry !== 'ALL' ? industry : 'technology infrastructure'
-            }.`,
-            category:
-              person.organization?.industry ||
-              (industry && industry !== 'ALL' ? industry : 'Enterprise Cloud Services'),
-            rawEvidence: person.linkedin_url
-              ? `Public executive signal verified on LinkedIn: ${person.linkedin_url}`
-              : 'Public executive procurement signal detected.',
-          },
-        },
-      }));
+        };
+      });
     } catch (err: any) {
       console.error('[Apollo Discovery Error]:', err?.message || err);
       return [];
@@ -176,8 +196,8 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
 }
 
 /**
- * Deterministic Mock Provider for non-LinkedIn channels (X, Corporate RFPs, etc.)
- * and fallback when external API rate limit or plan access restricts live queries.
+ * Deterministic Mock Provider for explicitly simulated non-LinkedIn channels (X, Corporate RFPs, etc.)
+ * or when APOLLO_API_KEY is not configured in the environment.
  */
 export class MockChannelDiscoveryProvider implements DiscoveryProvider {
   private channelName: string;
@@ -200,7 +220,7 @@ export class MockChannelDiscoveryProvider implements DiscoveryProvider {
   ): Promise<DiscoverySignal[]> {
     const kw = sanitizeSearchKeywords(keywords[0]) || 'Enterprise Cloud Modernization';
     const loc = location && location !== 'ALL' ? location : 'San Francisco, CA';
-    const ind = industry && industry !== 'ALL' ? industry : 'Enterprise Cloud Services';
+    const ind = industry && industry !== 'ALL' ? industry : 'Information Technology & Services';
 
     return [
       {
@@ -228,34 +248,6 @@ export class MockChannelDiscoveryProvider implements DiscoveryProvider {
             description: `Active procurement and engineering evaluation published for ${kw}. Seeking enterprise certified partners.`,
             category: ind,
             rawEvidence: `Executive signal verified: "Initiating vendor selection for enterprise ${kw} upgrade and migration."`,
-          },
-        },
-      },
-      {
-        sourceName: this.channelName,
-        sourceUrl:
-          this.platformKey === 'LINKEDIN'
-            ? 'https://www.linkedin.com/in/david-chen-eng'
-            : 'https://procurement-portal.com/rfp/9083',
-        confidence: 88,
-        rawData: {
-          name: 'David Chen',
-          title: 'Director of Enterprise Architecture',
-          email: 'd.chen@apexscale.io',
-          linkedinUrl: 'https://www.linkedin.com/in/david-chen-eng',
-          company: {
-            name: 'ApexScale Systems',
-            domain: 'apexscale.io',
-            industry: ind,
-            size: '250-1000',
-            location: loc,
-            websiteUrl: 'https://apexscale.io',
-          },
-          requirement: {
-            title: `${kw} Migration & Infrastructure RFP`,
-            description: `RFP seeking implementation and consulting partner for large-scale ${kw} deployment.`,
-            category: ind,
-            rawEvidence: `Public procurement RFP: "Seeking enterprise partner for ${kw} rollout with dedicated support SLA."`,
           },
         },
       },
@@ -291,6 +283,7 @@ export async function runDiscoveryJob(
     const isLinkedIn = job.source === 'LINKEDIN' || job.source === 'ALL' || !job.source;
     let signals: DiscoverySignal[] = [];
 
+    // If searching LinkedIn channel and Apollo API key is configured, execute Apollo search directly
     if (isLinkedIn && process.env.APOLLO_API_KEY?.trim()) {
       const apolloProvider = new ApolloLinkedInDiscoveryProvider();
       signals = await apolloProvider.discover(
@@ -299,21 +292,21 @@ export async function runDiscoveryJob(
         options?.location,
         options?.industry
       );
-    }
-
-    // If external search returned 0 signals (e.g. Free plan 403 or non-LinkedIn channel), run fallback provider
-    if (signals.length === 0) {
-      const channelLabel = isLinkedIn
-        ? 'LinkedIn Executive RFPs'
-        : job.source === 'X'
-        ? 'X / Twitter Signals'
-        : job.source === 'PUBLIC_DIRECTORY'
-        ? 'Public Procurement Registers'
-        : 'Corporate RFP Portals';
+      // NOTE: If Apollo returns 0 results or errors, DO NOT inject mock data. Return empty results cleanly.
+    } else if (!process.env.APOLLO_API_KEY?.trim() || !isLinkedIn) {
+      // Only use mock/demo data if APOLLO_API_KEY is completely unset or if the user explicitly selected a non-LinkedIn simulated channel
+      const channelLabel =
+        job.source === 'X'
+          ? 'X / Twitter Signals'
+          : job.source === 'PUBLIC_DIRECTORY'
+          ? 'Public Procurement Registers'
+          : job.source === 'WEBSITE'
+          ? 'Corporate RFP Portals'
+          : 'Simulated Public Channel';
 
       const fallbackProvider = new MockChannelDiscoveryProvider(
         channelLabel,
-        job.source || 'LINKEDIN'
+        job.source || 'WEBSITE'
       );
       signals = await fallbackProvider.discover(
         effectiveKeywords,

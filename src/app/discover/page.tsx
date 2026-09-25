@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { EmptyState } from '@/components/shared/empty-state';
 import { TableLoadingSkeleton } from '@/components/shared/loading-skeleton';
 import { OpportunityItem } from '@/types';
 import { ImportCenter } from '@/components/discover/import-center';
@@ -104,12 +103,19 @@ export default function DiscoveryPage() {
 
       if (res.ok && data.success) {
         const count = data.count ?? data.totalDiscovered ?? 0;
-        showToast(
-          `Discovered ${count} prospective ${count === 1 ? 'lead' : 'leads'} successfully from ${
-            source === 'ALL' ? 'public channels' : source
-          }!`,
-          'success'
-        );
+        if (count > 0) {
+          showToast(
+            `Discovered ${count} prospective ${count === 1 ? 'lead' : 'leads'} successfully from ${
+              source === 'ALL' ? 'public channels' : source
+            }!`,
+            'success'
+          );
+        } else {
+          showToast(
+            'No leads discovered matching your query. Try broadening your keywords.',
+            'error'
+          );
+        }
         // Immediately reload table data with newly discovered leads
         await fetchDiscoveryResults();
       } else {
@@ -427,21 +433,51 @@ export default function DiscoveryPage() {
           {loading ? (
             <TableLoadingSkeleton rows={5} />
           ) : results.length === 0 ? (
-            <EmptyState
-              title="No discovery signals matched your parameters"
-              description="Adjust your keyword, channel, or industry filter to discover more leads."
-              actionLabel="Reset to Default Discovery Scan"
-              onAction={() => {
-                setKeyword('');
-                setSource('ALL');
-                setIndustry('ALL');
-                setLocation('ALL');
-              }}
-            />
+            <div className="bg-white border border-slate-200/80 rounded-xl p-8 sm:p-12 text-center space-y-4 shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-blue-50 text-[#2563EB] mx-auto flex items-center justify-center border border-blue-100">
+                <Search className="w-6 h-6" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h3 className="text-base font-bold text-[#102A43]">No Leads Discovered</h3>
+                <p className="text-xs text-[#627D98] leading-relaxed">
+                  No public executive profiles matched your search keyword and filter criteria. Try broadening your keyword (e.g. use &ldquo;SharePoint&rdquo; instead of long queries) or adjusting the region filter.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2.5 pt-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setKeyword('');
+                    setSource('ALL');
+                    setIndustry('ALL');
+                    setLocation('ALL');
+                  }}
+                  className="text-xs font-semibold border-slate-200 bg-white hover:bg-slate-50 text-[#102A43]"
+                >
+                  Clear Filters
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setKeyword('SharePoint Migration');
+                    setSource('LINKEDIN');
+                  }}
+                  className="text-xs font-semibold bg-[#2563EB] hover:bg-[#1d4ed8] text-white"
+                >
+                  Try Popular Presets
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {results.map((item) => {
                 const req = item.requirements?.[0];
+                const cleanLinkedinUrl = item.linkedinUrl
+                  ? item.linkedinUrl.startsWith('http')
+                    ? item.linkedinUrl
+                    : `https://${item.linkedinUrl}`
+                  : null;
 
                 return (
                   <Card
@@ -490,15 +526,20 @@ export default function DiscoveryPage() {
                           <Building2 className="w-3.5 h-3.5 text-slate-400" />
                           {item.company.size || '50-200 employees'}
                         </span>
-                        {item.linkedinUrl && (
+                        {cleanLinkedinUrl ? (
                           <a
-                            href={item.linkedinUrl}
+                            href={cleanLinkedinUrl}
                             target="_blank"
-                            rel="noreferrer"
-                            className="text-[#2563EB] hover:underline flex items-center gap-0.5 text-[11px]"
+                            rel="noopener noreferrer"
+                            className="text-[#2563EB] hover:text-[#1d4ed8] hover:underline flex items-center gap-1 text-[11px] font-semibold"
                           >
-                            LinkedIn <ExternalLink className="w-2.5 h-2.5" />
+                            <span>LinkedIn Profile</span>
+                            <ExternalLink className="w-3 h-3" />
                           </a>
+                        ) : (
+                          <span className="text-slate-400 flex items-center gap-1 text-[11px] font-medium cursor-not-allowed">
+                            <span>No Public Profile Link</span>
+                          </span>
                         )}
                       </div>
                       <Link href={`/opportunities/${item.id}`}>
