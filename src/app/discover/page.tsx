@@ -452,7 +452,7 @@ export default function DiscoveryPage() {
               <div className="max-w-md mx-auto space-y-1.5">
                 <h3 className="text-base font-bold text-[#102A43]">No Leads Discovered</h3>
                 <p className="text-xs text-[#627D98] leading-relaxed">
-                  No public executive profiles matched your search keyword and filter criteria. Try broadening your keyword (e.g. use &ldquo;SharePoint&rdquo; instead of long queries) or adjusting the region filter.
+                  No Leads Discovered. Adjust your keyword or region filters.
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2.5 pt-2 flex-wrap">
@@ -545,14 +545,14 @@ export default function DiscoveryPage() {
                             href={cleanLinkedinUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200"
                           >
                             <span>View LinkedIn Profile</span>
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         ) : (
                           <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                            No LinkedIn Profile Linked
+                            No Profile Link Available
                           </span>
                         )}
                       </div>

@@ -44,37 +44,25 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
     location?: string,
     industry?: string
   ): Promise<DiscoverySignal[]> {
-    const rawKey = process.env.APOLLO_API_KEY?.trim();
-    if (!rawKey) {
-      console.warn('[Apollo Discovery] APOLLO_API_KEY is not set in environment.');
+    const apiKey = process.env.APOLLO_API_KEY?.trim();
+    if (!apiKey) {
+      console.error('[Apollo Error] APOLLO_API_KEY is not defined in process.env');
       return [];
     }
 
     try {
       const rawKeyword = keywords.length > 0 ? keywords.join(' ') : undefined;
-      const cleanedKeyword = sanitizeSearchKeywords(rawKeyword);
-
-      console.log('[Apollo Discovery] Querying Apollo mixed_people/search with params:', {
-        rawKeyword,
-        cleanedKeyword,
-        location,
-        industry,
-        maxResults: MAX_RESULTS_PER_SCAN,
-      });
+      const sanitizedKeyword = sanitizeSearchKeywords(rawKeyword);
 
       const payload: Record<string, any> = {
-        api_key: rawKey,
-        q_keywords: cleanedKeyword,
+        api_key: apiKey,
+        q_keywords: sanitizedKeyword,
         page: 1,
-        per_page: MAX_RESULTS_PER_SCAN,
+        per_page: 5,
+        person_titles: sanitizedKeyword ? [sanitizedKeyword] : undefined,
       };
 
-      // Add industry / title filter if provided and not generic
-      if (industry && industry !== 'ALL' && industry !== 'All Industries') {
-        payload.person_titles = [cleanedKeyword];
-      }
-
-      // Map location to Apollo's expected array format
+      // Map location to Apollo's expected array format if provided
       if (location && location !== 'ALL' && location !== 'All Regions') {
         if (location.includes('United States')) {
           payload.person_locations = ['United States'];
@@ -87,26 +75,42 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
         }
       }
 
+      console.log('[Apollo Request Payload]:', JSON.stringify(payload));
+
       const res = await fetch('https://api.apollo.io/v1/mixed_people/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
-          'X-Api-Key': rawKey,
+          'X-Api-Key': apiKey,
         },
         body: JSON.stringify(payload),
       });
 
-      console.log('[Apollo Live Search] HTTP Status:', res.status);
-      const resData = await res.json();
+      console.log('[Apollo Response Status]:', res.status);
+      const rawText = await res.text();
+      console.log('[Apollo Raw Response]:', rawText.slice(0, 500));
+
+      let resData: any = {};
+      try {
+        resData = JSON.parse(rawText);
+      } catch {
+        console.error('[Apollo Error] Failed to parse response as JSON');
+        return [];
+      }
 
       if (!res.ok) {
-        console.error('[Apollo Live Search] Error response:', res.status, resData);
+        console.error('[Apollo Error] Response not OK:', res.status, resData?.error || resData?.message || resData);
         return [];
       }
 
       const rawPeople: any[] = resData.people || resData.contacts || [];
       console.log('[Apollo Live Search] People returned:', rawPeople.length);
+
+      if (rawPeople.length === 0) {
+        console.log('[Apollo Live Search] 0 people returned matching search criteria.');
+        return [];
+      }
 
       if (rawPeople.length > 0) {
         console.log('[Apollo Sample Person]:', {
@@ -116,30 +120,12 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
         });
       }
 
-      if (rawPeople.length === 0) {
-        console.log('[Apollo Live Search] 0 people returned matching the search criteria.');
-        return [];
-      }
-
-      // Filter toward results that have a real, reachable LinkedIn profile link
-      const validPeople = rawPeople
-        .filter((p: any) => {
-          const url = p.linkedin_url;
-          if (!url || typeof url !== 'string') return false;
-          const trimmed = url.trim().toLowerCase();
-          if (trimmed === '#' || trimmed === '' || trimmed.includes('example.com')) return false;
-          return true;
-        })
-        .slice(0, MAX_RESULTS_PER_SCAN);
-
-      console.log(`[Apollo Live Search] Mapped ${validPeople.length} valid LinkedIn candidate leads.`);
-
-      return validPeople.map((person: any) => {
-        let realLinkedInUrl = person.linkedin_url;
-        if (realLinkedInUrl && typeof realLinkedInUrl === 'string') {
-          realLinkedInUrl = realLinkedInUrl.trim();
-          if (!realLinkedInUrl.startsWith('http')) {
-            realLinkedInUrl = `https://${realLinkedInUrl}`;
+      return rawPeople.slice(0, MAX_RESULTS_PER_SCAN).map((person: any) => {
+        let realLinkedInUrl: string | null = null;
+        if (person.linkedin_url && typeof person.linkedin_url === 'string') {
+          const trimmed = person.linkedin_url.trim();
+          if (trimmed !== '#' && trimmed !== '' && !trimmed.includes('example.com')) {
+            realLinkedInUrl = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
           }
         }
 
@@ -153,7 +139,7 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
 
         return {
           sourceName: 'LinkedIn Executive Network',
-          sourceUrl: realLinkedInUrl || 'https://linkedin.com',
+          sourceUrl: realLinkedInUrl || undefined,
           confidence: 90,
           rawData: {
             name: personName,
@@ -190,8 +176,8 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
               websiteUrl: person.organization?.website_url || undefined,
             },
             requirement: {
-              title: cleanedKeyword
-                ? `${cleanedKeyword} Enterprise Modernization Initiative`
+              title: sanitizedKeyword
+                ? `${sanitizedKeyword} Enterprise Modernization Initiative`
                 : `${personTitle} Vendor Evaluation`,
               description: `Executive ${personName} at ${companyName} initiated vendor evaluation for ${
                 industry && industry !== 'ALL' && industry !== 'All Industries'
@@ -203,9 +189,7 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
                 (industry && industry !== 'ALL' && industry !== 'All Industries'
                   ? industry
                   : 'Information Technology & Services'),
-              rawEvidence: realLinkedInUrl
-                ? `Public executive signal verified on LinkedIn: ${realLinkedInUrl}`
-                : 'Public executive procurement signal detected.',
+              rawEvidence: realLinkedInUrl || 'Public executive procurement signal detected.',
             },
           },
         };
@@ -214,66 +198,6 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
       console.error('[Apollo Live Search Error]:', err?.message || err);
       return [];
     }
-  }
-}
-
-/**
- * Deterministic Mock Provider for explicitly simulated non-LinkedIn channels (X, Corporate RFPs, etc.)
- * or when APOLLO_API_KEY is not configured in the environment.
- */
-export class MockChannelDiscoveryProvider implements DiscoveryProvider {
-  private channelName: string;
-  private platformKey: string;
-
-  constructor(channelName: string = 'Corporate RFP Portals', platformKey: string = 'WEBSITE') {
-    this.channelName = channelName;
-    this.platformKey = platformKey;
-  }
-
-  validateSource(_url: string): boolean {
-    return true;
-  }
-
-  async discover(
-    keywords: string[],
-    _negativeKeywords: string[],
-    location?: string,
-    industry?: string
-  ): Promise<DiscoverySignal[]> {
-    const kw = sanitizeSearchKeywords(keywords[0]) || 'Enterprise Cloud Modernization';
-    const loc = location && location !== 'ALL' ? location : 'San Francisco, CA';
-    const ind = industry && industry !== 'ALL' ? industry : 'Information Technology & Services';
-
-    return [
-      {
-        sourceName: this.channelName,
-        sourceUrl:
-          this.platformKey === 'LINKEDIN'
-            ? 'https://www.linkedin.com/in/sarah-mitchell-cto'
-            : 'https://procurement-portal.com/rfp/9082',
-        confidence: 92,
-        rawData: {
-          name: 'Sarah Mitchell',
-          title: 'VP of Technology & Infrastructure',
-          email: 's.mitchell@vertexcloud.io',
-          linkedinUrl: 'https://www.linkedin.com/in/sarah-mitchell-cto',
-          company: {
-            name: 'Vertex Cloud Dynamics',
-            domain: 'vertexcloud.io',
-            industry: ind,
-            size: '100-500',
-            location: loc,
-            websiteUrl: 'https://vertexcloud.io',
-          },
-          requirement: {
-            title: `${kw} Enterprise Modernization Initiative`,
-            description: `Active procurement and engineering evaluation published for ${kw}. Seeking enterprise certified partners.`,
-            category: ind,
-            rawEvidence: `Executive signal verified: "Initiating vendor selection for enterprise ${kw} upgrade and migration."`,
-          },
-        },
-      },
-    ];
   }
 }
 
@@ -305,32 +229,11 @@ export async function runDiscoveryJob(
     const isLinkedIn = job.source === 'LINKEDIN' || job.source === 'ALL' || !job.source;
     let signals: DiscoverySignal[] = [];
 
-    // If searching LinkedIn channel and Apollo API key is configured, execute Apollo search directly
-    if (isLinkedIn && process.env.APOLLO_API_KEY?.trim()) {
+    // If searching LinkedIn channel or ALL, execute Apollo search directly.
+    // If Apollo returns 0 results or errors, DO NOT inject mock leads.
+    if (isLinkedIn) {
       const apolloProvider = new ApolloLinkedInDiscoveryProvider();
       signals = await apolloProvider.discover(
-        effectiveKeywords,
-        [],
-        options?.location,
-        options?.industry
-      );
-      // NOTE: If Apollo returns 0 results or errors, DO NOT inject mock data. Return empty results cleanly.
-    } else if (!process.env.APOLLO_API_KEY?.trim() || !isLinkedIn) {
-      // Only use mock/demo data if APOLLO_API_KEY is completely unset or if the user explicitly selected a non-LinkedIn simulated channel
-      const channelLabel =
-        job.source === 'X'
-          ? 'X / Twitter Signals'
-          : job.source === 'PUBLIC_DIRECTORY'
-          ? 'Public Procurement Registers'
-          : job.source === 'WEBSITE'
-          ? 'Corporate RFP Portals'
-          : 'Simulated Public Channel';
-
-      const fallbackProvider = new MockChannelDiscoveryProvider(
-        channelLabel,
-        job.source || 'WEBSITE'
-      );
-      signals = await fallbackProvider.discover(
         effectiveKeywords,
         [],
         options?.location,
