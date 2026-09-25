@@ -30,6 +30,22 @@ export function sanitizeSearchKeywords(keyword?: string): string | undefined {
   return cleaned.length > 0 ? cleaned : keyword.trim();
 }
 
+export function mapLocationToApollo(loc?: string): string[] | undefined {
+  if (!loc || loc === 'ALL' || loc === 'All Regions' || loc.includes('Remote')) {
+    return undefined;
+  }
+  if (loc.includes('United States')) {
+    return ['United States'];
+  }
+  if (loc.includes('India') || loc.includes('APAC')) {
+    return ['India', 'Singapore', 'Australia'];
+  }
+  if (loc.includes('United Kingdom') || loc.includes('Europe')) {
+    return ['United Kingdom', 'Germany', 'France'];
+  }
+  return [loc];
+}
+
 /**
  * Real Apollo.io Mixed People Search Provider for LinkedIn Executive Signals
  */
@@ -54,20 +70,18 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
     try {
       const rawKeyword = keywords.length > 0 ? keywords.join(' ') : undefined;
       const sanitizedKeyword = sanitizeSearchKeywords(rawKeyword);
+      const cleanQuery = (sanitizedKeyword || '').replace(/&/g, ' ').replace(/\s+/g, ' ').trim();
+      const apolloLocations = mapLocationToApollo(location);
 
       const payload: Record<string, any> = {
         api_key: apiKey,
-        q_keywords: sanitizedKeyword,
+        q_keywords: cleanQuery,
         page: 1,
         per_page: 5,
       };
 
-      if (sanitizedKeyword) {
-        payload.person_titles = [sanitizedKeyword];
-      }
-
-      if (location && location !== 'ALL' && location !== 'All Regions') {
-        payload.person_locations = [location];
+      if (apolloLocations && apolloLocations.length > 0) {
+        payload.person_locations = apolloLocations;
       }
 
       console.log('[Apollo API Search Payload]:', JSON.stringify(payload));
@@ -97,6 +111,31 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
       } catch (e) {
         console.error('[Apollo Discovery] JSON parse failure:', e);
         return [];
+      }
+
+      // If the full phrase returned 0, try the first primary keyword (e.g., "AWS" from "Cloud Infrastructure AWS")
+      if (!resData.people || resData.people.length === 0) {
+        const words = cleanQuery.split(' ').filter((w) => w.length > 2);
+        if (words.length > 1) {
+          console.log('[Apollo Retry] Retrying with primary keyword:', words[0]);
+          payload.q_keywords = words[0];
+          const retryRes = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'X-Api-Key': apiKey,
+            },
+            body: JSON.stringify(payload),
+          });
+          if (retryRes.ok) {
+            try {
+              resData = await retryRes.json();
+            } catch (err) {
+              console.error('[Apollo Retry] Failed to parse retry response:', err);
+            }
+          }
+        }
       }
 
       const rawPeople: any[] = resData.people || [];
