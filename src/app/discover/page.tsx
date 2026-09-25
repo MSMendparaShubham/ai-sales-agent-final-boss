@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Compass,
@@ -10,6 +10,10 @@ import {
   MapPin,
   Building2,
   ExternalLink,
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,51 +32,97 @@ export default function DiscoveryPage() {
   const [location, setLocation] = useState('ALL');
   const [results, setResults] = useState<OpportunityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
-  const fetchDiscoveryResults = async () => {
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 6000);
+  };
+
+  const fetchDiscoveryResults = useCallback(async (overrideKeyword?: string) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (keyword) params.set('search', keyword);
+      const currentKeyword = overrideKeyword !== undefined ? overrideKeyword : keyword;
+      if (currentKeyword) params.set('search', currentKeyword);
       if (source !== 'ALL') params.set('source', source);
       if (industry !== 'ALL') params.set('industry', industry);
       if (location !== 'ALL') params.set('location', location);
       params.set('limit', '50');
 
+      console.log('[Discover UI] Fetching leads with query:', params.toString());
       const res = await fetch(`/api/opportunities?${params.toString()}`);
+      if (!res.ok) {
+        console.error('[Discover UI] Failed to load opportunities. Status:', res.status);
+        return;
+      }
       const data = await res.json();
+      console.log('[Discover UI] Fetched opportunities count:', data.items?.length || 0);
       setResults(data.items || []);
     } catch (e) {
-      console.error('Failed to fetch discovery results:', e);
+      console.error('[Discover UI] Failed to fetch discovery results:', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [keyword, source, industry, location]);
 
   useEffect(() => {
     fetchDiscoveryResults();
-  }, [source, industry, location]);
+  }, [fetchDiscoveryResults, source, industry, location]);
 
   const handleManualScan = async () => {
+    console.log('[Discover UI] Trigger Scan clicked. Filters:', {
+      channel: source,
+      keyword,
+      industry,
+      location,
+    });
+
+    setIsScanning(true);
+    setToastMessage(null);
+
     try {
-      setScanning(true);
-      await fetch('/api/discover/jobs', {
+      const res = await fetch('/api/discover/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: source,
-          source,
-          keyword,
-          industry,
-          location,
+          source: source,
+          keyword: keyword || '',
+          industry: industry || '',
+          location: location || '',
         }),
       });
-      await fetchDiscoveryResults();
-    } catch (err) {
-      console.error('Failed to trigger scan:', err);
+
+      const data = await res.json();
+      console.log('[Discover UI] Server response:', res.status, data);
+
+      if (res.ok && data.success) {
+        const count = data.count ?? data.totalDiscovered ?? 0;
+        showToast(
+          `Discovered ${count} prospective ${count === 1 ? 'lead' : 'leads'} successfully from ${
+            source === 'ALL' ? 'public channels' : source
+          }!`,
+          'success'
+        );
+        // Immediately reload table data with newly discovered leads
+        await fetchDiscoveryResults();
+      } else {
+        const errMsg = data.error || 'Discovery scan failed to find candidates. Please refine your search keyword.';
+        console.error('[Discover UI Error]:', errMsg);
+        showToast(errMsg, 'error');
+      }
+    } catch (err: any) {
+      const errMsg = err?.message || 'Network error occurred during discovery scan.';
+      console.error('[Discover UI Error]:', err);
+      showToast(errMsg, 'error');
     } finally {
-      setScanning(false);
+      setIsScanning(false);
     }
   };
 
@@ -109,6 +159,32 @@ export default function DiscoveryPage() {
 
   return (
     <div className="space-y-6 pb-12 max-w-[1536px] w-full mx-auto" data-testid="discovery-page">
+      {/* Toast Alert Banner */}
+      {toastMessage && (
+        <div
+          className={`p-3.5 rounded-lg border text-xs flex items-center justify-between shadow-sm transition-all duration-200 ${
+            toastType === 'success'
+              ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#166534]'
+              : 'bg-[#FEF2F2] border-[#FECACA] text-[#991B1B]'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {toastType === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-[#16A34A] flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-[#DC2626] flex-shrink-0" />
+            )}
+            <span className="font-semibold">{toastMessage}</span>
+          </div>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-slate-400 hover:text-slate-600 font-bold p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#D9E2EC] pb-5">
         <div>
@@ -129,12 +205,12 @@ export default function DiscoveryPage() {
 
         <Button
           onClick={handleManualScan}
-          disabled={scanning || activeTab !== 'ai'}
+          disabled={isScanning || activeTab !== 'ai'}
           size="sm"
           className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-xs font-semibold flex items-center gap-2 shadow-sm"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
-          <span>{scanning ? 'Scanning Public Channels...' : 'Trigger Scan Now'}</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+          <span>{isScanning ? 'Scanning Public Channels...' : 'Trigger Scan Now'}</span>
         </Button>
       </div>
 
@@ -181,6 +257,11 @@ export default function DiscoveryPage() {
                     placeholder="e.g. SharePoint, Cloud Migration, Head of IT"
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        fetchDiscoveryResults();
+                      }
+                    }}
                     className="pl-9 h-9 bg-white border-[#D9E2EC] text-[#102A43] text-xs placeholder:text-[#627D98] focus-visible:ring-[#2563EB] font-sans font-medium"
                   />
                 </div>

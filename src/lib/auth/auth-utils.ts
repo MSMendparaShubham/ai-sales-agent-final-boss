@@ -11,25 +11,53 @@ export async function getSession() {
     if (session?.user) return session;
   } catch {}
 
-  // Fallback to default user in local development
-  const firstUser = await prisma.user.findFirst();
-  if (firstUser) {
-    return {
-      user: {
-        id: firstUser.id,
-        email: firstUser.email,
-        name: firstUser.name,
-        role: firstUser.role || 'ADMIN',
-      },
-      session: {
-        id: 'dev-session-id',
-        userId: firstUser.id,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+  // Fallback to default user / auto-provision default workspace in development/demo
+  let firstUser = await prisma.user.findFirst();
+  if (!firstUser) {
+    firstUser = await prisma.user.create({
+      data: {
+        email: 'alex.morgan@intentos.ai',
+        name: 'Alex Morgan',
+        role: 'ADMIN',
       }
-    } as any;
+    });
   }
 
-  return null;
+  let firstWorkspace = await prisma.workspace.findFirst();
+  if (!firstWorkspace) {
+    firstWorkspace = await prisma.workspace.create({
+      data: {
+        name: 'IntentOS Enterprise Workspace',
+      }
+    });
+  }
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { userId: firstUser.id, workspaceId: firstWorkspace.id }
+  });
+  if (!membership) {
+    await prisma.workspaceMember.create({
+      data: {
+        userId: firstUser.id,
+        workspaceId: firstWorkspace.id,
+        role: 'ADMIN',
+      }
+    });
+  }
+
+  return {
+    user: {
+      id: firstUser.id,
+      email: firstUser.email,
+      name: firstUser.name,
+      role: firstUser.role || 'ADMIN',
+    },
+    session: {
+      id: 'dev-session-id',
+      userId: firstUser.id,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+    }
+  } as any;
 }
 
 export async function requireSession() {

@@ -10,12 +10,24 @@ export async function GET(req: NextRequest) {
     // Default to the first workspace they belong to if not explicitly provided, or pass from headers
     // For this implementation, we fetch their first membership
     const { prisma } = await import('@/lib/db/prisma');
-    const firstMembership = await prisma.workspaceMember.findFirst({
+    let firstMembership = await prisma.workspaceMember.findFirst({
       where: { userId: session.user.id }
     });
     
     if (!firstMembership) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 403 });
+      let ws = await prisma.workspace.findFirst();
+      if (!ws) {
+        ws = await prisma.workspace.create({
+          data: { name: 'IntentOS Enterprise Workspace' }
+        });
+      }
+      firstMembership = await prisma.workspaceMember.create({
+        data: {
+          userId: session.user.id,
+          workspaceId: ws.id,
+          role: 'ADMIN'
+        }
+      });
     }
     
     const { membership } = await requireWorkspace(firstMembership.workspaceId);
