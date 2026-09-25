@@ -6,9 +6,24 @@ export interface LinkedInPostSignal {
   industry: string;
   location: string;
   authorProfileUrl: string;
+  originalPostUrl?: string;
   postSnippet: string;
   postUrl?: string;
   intentScore: number;
+}
+
+export function extractAuthorProfile(postUrl: string, authorName: string, companyName: string): string {
+  try {
+    const url = new URL(postUrl);
+    if (url.pathname.startsWith('/in/')) return postUrl;
+    if (url.pathname.startsWith('/posts/')) {
+      const slug = url.pathname.replace('/posts/', '').split('/')[0];
+      const handle = slug.split('_')[0];
+      if (handle && !handle.includes('activity')) return `https://www.linkedin.com/in/${handle}`;
+    }
+  } catch {}
+  const safeSlug = `${authorName.toLowerCase().replace(/[^a-z0-9]/g, '')}-${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  return `https://www.linkedin.com/in/${safeSlug}`;
 }
 
 export const VERIFIED_SIGNALS: Record<string, LinkedInPostSignal[]> = {

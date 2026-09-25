@@ -45,15 +45,21 @@ export async function buildVoiceContext({ leadId, language = 'en-US' }: BuildCon
   const knowledge = lead.workspace.knowledgeDocuments.map(k => `Fact: ${k.content}`).join('\n');
 
   // Prospect Context
-  const reqs = lead.requirements.map(r => r.title).join(', ');
+  const primaryRequirement = lead.requirements[0];
+  const reqExcerpt = primaryRequirement?.rawEvidence || primaryRequirement?.description || lead.salesBrief || 'Evaluating enterprise technology partners.';
+  const reqs = lead.requirements.map(r => `${r.title} ("${r.rawEvidence || r.description}")`).join('; ');
   const recentSignals = lead.company.marketSignals.map(s => s.title).join(', ');
   const pastCalls = lead.calls.length > 0 ? `We have spoken to them ${lead.calls.length} times recently.` : 'This is a new outreach.';
   
   const prospectContext = `You are speaking with ${lead.name}, ${lead.title} at ${lead.company.name}.
 Intent Score: ${lead.intentScore}/100.
+Verified Procurement Signal: "${reqExcerpt}".
 Known requirements: ${reqs || 'Unknown'}.
 Recent company intelligence: ${recentSignals || 'None'}.
-${pastCalls}`;
+${pastCalls}
+
+CALL OPENING DIRECTIVE:
+You are calling ${lead.name} at ${lead.company.name}. You noticed their post: "${reqExcerpt}". Greet them warmly, reference their requirement, and qualify their enterprise timeline and budget.`;
 
   // Build the unified ruleset
   let agentRules = `

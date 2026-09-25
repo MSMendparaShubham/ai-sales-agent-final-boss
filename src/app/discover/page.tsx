@@ -565,9 +565,9 @@ export default function DiscoveryPage() {
 
                     {/* Post Excerpt Box */}
                     <div className="bg-slate-50 border-l-4 border-blue-500 p-3 rounded-md my-2.5">
-                      <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider block mb-1">
-                        Verified Procurement Signal
-                      </span>
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
+                        <span>Verbatim LinkedIn RFP Signal</span>
+                      </div>
                       <p className="text-sm text-slate-800 italic">
                         &ldquo;{rawEvidence}&rdquo;
                       </p>
@@ -582,7 +582,7 @@ export default function DiscoveryPage() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
                         >
-                          <span>{targetLinkedinUrl.includes('/in/') ? 'View Verified LinkedIn Profile' : 'View Verified LinkedIn Company & People'}</span>
+                          <span>View Author Profile</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                         <button
