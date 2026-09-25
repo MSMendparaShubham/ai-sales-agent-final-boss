@@ -44,9 +44,10 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
     location?: string,
     industry?: string
   ): Promise<DiscoverySignal[]> {
+    const url = 'https://api.apollo.io/api/v1/mixed_people/api_search';
     const apiKey = process.env.APOLLO_API_KEY?.trim();
     if (!apiKey) {
-      console.error('[Apollo Error] APOLLO_API_KEY is not defined in process.env');
+      console.error('[Apollo Error] APOLLO_API_KEY is not defined.');
       return [];
     }
 
@@ -59,25 +60,19 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
         q_keywords: sanitizedKeyword,
         page: 1,
         per_page: 5,
-        person_titles: sanitizedKeyword ? [sanitizedKeyword] : undefined,
       };
 
-      // Map location to Apollo's expected array format if provided
-      if (location && location !== 'ALL' && location !== 'All Regions') {
-        if (location.includes('United States')) {
-          payload.person_locations = ['United States'];
-        } else if (location.includes('India')) {
-          payload.person_locations = ['India'];
-        } else if (location.includes('United Kingdom')) {
-          payload.person_locations = ['United Kingdom'];
-        } else {
-          payload.person_locations = [location];
-        }
+      if (sanitizedKeyword) {
+        payload.person_titles = [sanitizedKeyword];
       }
 
-      console.log('[Apollo Request Payload]:', JSON.stringify(payload));
+      if (location && location !== 'ALL' && location !== 'All Regions') {
+        payload.person_locations = [location];
+      }
 
-      const res = await fetch('https://api.apollo.io/v1/mixed_people/search', {
+      console.log('[Apollo API Search Payload]:', JSON.stringify(payload));
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,24 +82,24 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
         body: JSON.stringify(payload),
       });
 
-      console.log('[Apollo Response Status]:', res.status);
+      console.log('[Apollo API Search Status]:', res.status);
       const rawText = await res.text();
-      console.log('[Apollo Raw Response]:', rawText.slice(0, 500));
+      console.log('[Apollo API Search Raw Response]:', rawText.slice(0, 500));
+
+      if (!res.ok) {
+        console.error('[Apollo Discovery] Error:', res.status, rawText);
+        return [];
+      }
 
       let resData: any = {};
       try {
         resData = JSON.parse(rawText);
-      } catch {
-        console.error('[Apollo Error] Failed to parse response as JSON');
+      } catch (e) {
+        console.error('[Apollo Discovery] JSON parse failure:', e);
         return [];
       }
 
-      if (!res.ok) {
-        console.error('[Apollo Error] Response not OK:', res.status, resData?.error || resData?.message || resData);
-        return [];
-      }
-
-      const rawPeople: any[] = resData.people || resData.contacts || [];
+      const rawPeople: any[] = resData.people || [];
       console.log('[Apollo Live Search] People returned:', rawPeople.length);
 
       if (rawPeople.length === 0) {
@@ -112,47 +107,46 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
         return [];
       }
 
-      if (rawPeople.length > 0) {
-        console.log('[Apollo Sample Person]:', {
-          name: `${rawPeople[0].first_name || ''} ${rawPeople[0].last_name || ''}`.trim() || rawPeople[0].name,
-          linkedin: rawPeople[0].linkedin_url,
-          company: rawPeople[0].organization?.name || rawPeople[0].company,
-        });
-      }
-
       return rawPeople.slice(0, MAX_RESULTS_PER_SCAN).map((person: any) => {
-        let realLinkedInUrl: string | null = null;
-        if (person.linkedin_url && typeof person.linkedin_url === 'string') {
-          const trimmed = person.linkedin_url.trim();
-          if (trimmed !== '#' && trimmed !== '' && !trimmed.includes('example.com')) {
-            realLinkedInUrl = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
-          }
+        const fullName =
+          `${person.first_name || ''} ${person.last_name || person.last_name_obfuscated || ''}`.trim() ||
+          'Enterprise Lead';
+        const orgName = person.organization?.name || person.company || 'Verified Organization';
+
+        let targetUrl: string;
+        if (
+          person.linkedin_url &&
+          typeof person.linkedin_url === 'string' &&
+          person.linkedin_url.trim() !== '#' &&
+          !person.linkedin_url.includes('example.com')
+        ) {
+          targetUrl = person.linkedin_url.startsWith('http')
+            ? person.linkedin_url
+            : `https://${person.linkedin_url}`;
+        } else {
+          targetUrl = `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(
+            `${fullName} ${orgName}`
+          )}`;
         }
 
-        const personName =
-          `${person.first_name || ''} ${person.last_name || ''}`.trim() ||
-          person.name ||
-          'Executive Contact';
         const personTitle = person.title || 'Executive Decision Maker';
-        const companyName =
-          person.organization?.name || person.company || 'Enterprise Solutions Inc.';
 
         return {
           sourceName: 'LinkedIn Executive Network',
-          sourceUrl: realLinkedInUrl || undefined,
+          sourceUrl: targetUrl,
           confidence: 90,
           rawData: {
-            name: personName,
+            name: fullName,
             title: personTitle,
             email: person.email || undefined,
-            linkedinUrl: realLinkedInUrl,
+            linkedinUrl: targetUrl,
             phone:
               person.phone_numbers?.[0]?.sanitized_number ||
               person.sanitized_phone ||
               person.phone_numbers?.[0]?.raw_number ||
               undefined,
             company: {
-              name: companyName,
+              name: orgName,
               domain: person.organization?.primary_domain || undefined,
               industry:
                 person.organization?.industry ||
@@ -179,7 +173,7 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
               title: sanitizedKeyword
                 ? `${sanitizedKeyword} Enterprise Modernization Initiative`
                 : `${personTitle} Vendor Evaluation`,
-              description: `Executive ${personName} at ${companyName} initiated vendor evaluation for ${
+              description: `Executive ${fullName} at ${orgName} initiated vendor evaluation for ${
                 industry && industry !== 'ALL' && industry !== 'All Industries'
                   ? industry
                   : 'technology infrastructure'
@@ -189,7 +183,7 @@ export class ApolloLinkedInDiscoveryProvider implements DiscoveryProvider {
                 (industry && industry !== 'ALL' && industry !== 'All Industries'
                   ? industry
                   : 'Information Technology & Services'),
-              rawEvidence: realLinkedInUrl || 'Public executive procurement signal detected.',
+              rawEvidence: targetUrl || 'Public executive procurement signal detected.',
             },
           },
         };
