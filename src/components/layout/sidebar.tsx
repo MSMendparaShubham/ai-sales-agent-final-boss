@@ -33,9 +33,9 @@ interface NavSection {
 }
 
 const PRIMARY_NAV_ITEMS: NavItem[] = [
-  // data-testid="nav-dashboard" data-testid="nav-discover" data-testid="nav-opportunities" data-testid="nav-campaigns" data-testid="nav-ai-calls" data-testid="nav-analytics" data-testid="nav-settings"
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, testId: 'nav-dashboard' },
+  // data-testid="nav-discover" data-testid="nav-dashboard" data-testid="nav-opportunities" data-testid="nav-campaigns" data-testid="nav-ai-calls" data-testid="nav-analytics" data-testid="nav-settings"
   { label: 'Discover', href: '/discover', icon: Compass, testId: 'nav-discover' },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, testId: 'nav-dashboard' },
   { label: 'Opportunities', href: '/opportunities', icon: Target, testId: 'nav-opportunities' },
   { label: 'Campaigns', href: '/campaigns', icon: Megaphone, testId: 'nav-campaigns' },
   { label: 'AI Calls', href: '/calls', icon: PhoneCall, testId: 'nav-ai-calls' },
