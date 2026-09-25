@@ -1,0 +1,829 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  notifications Notification[]
+  
+  // Custom fields
+  role          String    @default("SALES_REP")
+  avatarUrl     String?
+  calls         Call[]
+  activityLogs  ActivityLog[]
+  memberships   WorkspaceMember[]
+  imports       LeadImport[]
+  callbacks     Callback[]
+  ownedCampaigns Campaign[] @relation("CampaignOwner")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role        String    @default("SALES_REP") // OWNER, ADMIN, SALES_MANAGER, SALES_REP, ANALYST, VOICE_OPERATOR
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, workspaceId])
+}
+
+model Workspace {
+  id                  String               @id @default(cuid())
+  name                String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  products            Product[]
+  businessProfile     BusinessProfile?
+  knowledgeDocuments  KnowledgeDocument[]
+  icpProfile          IcpProfile?
+  businessCapability  BusinessCapability?
+  
+  memberships         WorkspaceMember[]
+  companies           Company[]
+  leads               Lead[]
+  campaigns           Campaign[]
+  calls               Call[]
+  activityLogs        ActivityLog[]
+  imports             LeadImport[]
+  discoveryJobs       DiscoveryJob[]
+  scoringConfig       ScoringConfiguration?
+  decisionTraces      AIDecisionTrace[]
+  integrations        Integration[]
+  subscription        WorkspaceSubscription?
+  usageLedger         UsageLedger[]
+  invoices            Invoice[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  securityEvents      SecurityEvent[]
+  fraudSignals        FraudSignal[]
+  meetingBookings     MeetingBooking[]
+  
+  isSuspended         Boolean  @default(false)
+  suspendReason       String?
+}
+
+model Company {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  domain         String?
+  industry       String
+  size           String
+  location       String
+  description    String?
+  linkedinUrl    String?
+  websiteUrl     String?
+  techStack      String? // JSON or comma-separated list of technologies
+  hiringSignals  String? // Summary of recent hiring signals
+  fundingSignals String? // Recent funding details
+  growthSignals  String? // Headcount & market growth indicators
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  leads          Lead[]
+  marketSignals  MarketSignal[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  description    String
+  targetAudience String?
+  priceRange     String?
+  valueProps     String? // Comma-separated or JSON features
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model LeadSource {
+  id           String        @id @default(cuid())
+  name         String
+  platform     String // LINKEDIN, X, WEBSITE, PUBLIC_DIRECTORY, FREELANCE_PLATFORM
+  sourceUrl    String?
+  confidence   Int           @default(85)
+  rawData      String?
+  createdAt    DateTime      @default(now())
+  leads        Lead[]
+  requirements Requirement[]
+}
+
+model Lead {
+  id                 String           @id @default(cuid())
+  workspaceId        String
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name               String
+  title              String
+  email              String?
+  phone              String?
+  linkedinUrl        String?
+  companyId          String
+  company            Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sourceId           String?
+  source             LeadSource?      @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  campaignId         String?
+  campaign           Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  status             String           @default("DISCOVERED") // DISCOVERED, RELEVANT, HIGH_INTENT, QUALIFIED, CONTACTED, INTERESTED, MEETING, CONVERTED, ARCHIVED
+  enrichmentStatus   String           @default("PENDING") // PENDING, ENRICHED, FAILED
+  duplicateScore     Int              @default(0)
+  isVerified         Boolean          @default(false)
+  intentScore        Int              @default(50) // 0 - 100
+  urgency            String           @default("MEDIUM") // LOW, MEDIUM, HIGH, IMMEDIATE
+  qualificationScore Int              @default(50) // 0 - 100
+  pipelineValue      Float            @default(25000)
+  salesBrief         String? // Synthesized AI sales brief
+  discoveredAt       DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  requirements       Requirement[]
+  qualifications     Qualification[]
+  recommendations    Recommendation[]
+  calls              Call[]
+  activityLogs       ActivityLog[]
+  importRows         LeadImportRow[]
+  discoveryResults   DiscoveryResult[]
+  provenance         LeadFieldProvenance[]
+  decisionTraces     AIDecisionTrace[]
+  callbacks          Callback[]
+  enrollments        CampaignEnrollment[]
+  followUpPlans      FollowUpPlan[]
+  meetingBookings    MeetingBooking[]
+  
+  // CRM Integration Fields
+  crmIntegrationId   String?
+  crmStatus          String           @default("NOT_CONNECTED") // NOT_CONNECTED, PENDING, SYNCING, SYNCED, FAILED
+  crmExternalId      String?
+  crmLastSyncAt      DateTime?
+}
+
+model Requirement {
+  id              String      @id @default(cuid())
+  leadId          String
+  lead            Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  sourceId        String?
+  source          LeadSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  title           String
+  description     String
+  category        String?
+  tags            String? // Comma-separated or JSON list of key requirements
+  budgetEstimate  String?
+  timeframe       String?
+  rawEvidence     String? // Exact excerpt or quote demonstrating intent
+  confidenceScore Int         @default(85)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model MarketSignal {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type         String // HIRING, FUNDING, TECHNOLOGY, GROWTH, LEADERSHIP, COMPETITOR
+  title        String
+  details      String
+  source       String
+  sourceUrl    String?
+  confidence   Int      @default(90)
+  relevance    Int      @default(50) // Score determining how materially this strengthens an opportunity
+  discoveredAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model Campaign {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String
+  objective      String?
+  targetAudience String?
+  icpCriteria    String?
+  minIntentScore Int      @default(0)
+  minQualificationScore Int @default(0)
+  industries     String?  // JSON array
+  locations      String?  // JSON array
+  languages      String?  // JSON array
+  sourceFilters  String?  // JSON array
+  
+  mode           String   @default("CALLING_ONLY") // CALLING_ONLY, DISCOVERY_AND_CALLING
+  channels       String?  // JSON or comma-separated
+  
+  callingWindowStart String? @default("09:00")
+  callingWindowEnd   String? @default("17:00")
+  timezonePolicy     String? @default("PROSPECT_LOCAL") // PROSPECT_LOCAL, CAMPAIGN_LOCAL, STRICT_UTC
+  
+  retryPolicy    String?  @default("EXPONENTIAL_BACKOFF")
+  maxAttempts    Int      @default(3)
+  
+  scheduleMode   String   @default("IMMEDIATE") // IMMEDIATE, SCHEDULED, DAILY, WEEKLY, MONTHLY
+  scheduledAt    DateTime?
+  
+  status         String   @default("DRAFT") // DRAFT, SCHEDULED, ACTIVE, PAUSED, COMPLETED, CANCELLED
+  
+  ownerId        String?
+  owner          User?    @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  leads          Lead[]
+  calls          Call[]
+  enrollments    CampaignEnrollment[]
+  meetingBookings MeetingBooking[]
+}
+
+model CampaignEnrollment {
+  id             String   @id @default(cuid())
+  campaignId     String
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leadId         String
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  status         String   @default("ENROLLED") // ENROLLED, QUEUED, CONTACTED, CONNECTED, QUALIFIED, INTERESTED, MEETING, REJECTED, OPTED_OUT, FAILED
+  attemptsCount  Int      @default(0)
+  
+  enrolledAt     DateTime @default(now())
+  lastContactedAt DateTime?
+  nextRetryAt    DateTime?
+  
+  @@unique([campaignId, leadId])
+}
+
+model Call {
+  id              String      @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leadId          String
+  lead            Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  campaignId      String?
+  campaign        Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status          String      @default("QUEUED") // QUEUED, SCHEDULED, RINGING, CONNECTED, IN_PROGRESS, VOICEMAIL, NO_ANSWER, CALLBACK_REQUESTED, COMPLETED, FAILED, HANDED_OFF
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSeconds Int         @default(0)
+  summary         String?
+  sentiment       String?     @default("POSITIVE") // POSITIVE, NEUTRAL, NEGATIVE, HIGHLY_INTERESTED
+  interestLevel   String?     @default("MEDIUM") // LOW, MEDIUM, HIGH, EXTREME
+  nextStep        String?
+  recordingUrl    String?
+  transcript      Transcript?
+
+  // Orchestration & Configuration
+  timezone        String?     // Prospect timezone
+  optOut          Boolean     @default(false)
+  maxAttempts     Int         @default(3)
+  retryDelay      Int         @default(86400) // Delay in seconds
+  language        String      @default("en")
+
+  attempts        CallAttempt[]
+  callbacks       Callback[]
+  followUpPlans   FollowUpPlan[]
+  meetingBookings MeetingBooking[]
+
+  createdAt       DateTime    @default(now())
+}
+
+model CallAttempt {
+  id              String   @id @default(cuid())
+  callId          String
+  call            Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  startTime       DateTime @default(now())
+  endTime         DateTime?
+  disposition     String   // NO_ANSWER, VOICEMAIL, CONNECTED, FAILED
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+}
+
+model Callback {
+  id              String   @id @default(cuid())
+  callId          String
+  call            Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  leadId          String
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  scheduledAt     DateTime
+  timezone        String?
+  reason          String?
+  assignedUserId  String?
+  assignedUser    User?    @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  status          String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model FollowUpPlan {
+  id              String    @id @default(cuid())
+  leadId          String
+  lead            Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  callId          String?
+  call            Call?     @relation(fields: [callId], references: [id], onDelete: SetNull)
+  
+  action          String    // SCHEDULE_MEETING, CALLBACK, RETRY_CALL, SEND_CONTENT, ROUTE_TO_SALES, STOP_CAMPAIGN, SUPPRESS_OUTREACH
+  scheduledFor    DateTime?
+  reason          String
+  channel         String    @default("VOICE")
+  owner           String    @default("AI_AGENT")
+  expectedOutcome String
+  status          String    @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  meetingBookings MeetingBooking[]
+}
+
+model Transcript {
+  id              String   @id @default(cuid())
+  callId          String   @unique
+  call            Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  dialogue        String // JSON array of [{speaker: "AI"|"Lead", text: string, timestamp: string, intentFlag?: string}]
+  rawText         String?
+  speakerTimeline String? // JSON metadata
+  sentimentCurve  String? // JSON curve of sentiment changes
+  createdAt       DateTime @default(now())
+}
+
+model Qualification {
+  id             String   @id @default(cuid())
+  leadId         String
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  budgetFit      Int      @default(80)
+  authorityFit   Int      @default(90)
+  needFit        Int      @default(85)
+  timingFit      Int      @default(80)
+  overallScore   Int      @default(84)
+  reasoning      String?
+  summary        String?
+  status         String   @default("QUALIFIED") // QUALIFIED, DISQUALIFIED, PENDING
+  evaluatedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+model Recommendation {
+  id               String   @id @default(cuid())
+  leadId           String
+  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actionType       String // CALL_NOW, SEND_PROPOSAL, SCHEDULE_DEMO, FOLLOW_UP, RESEARCH
+  title            String
+  rationale        String
+  priority         String   @default("HIGH") // HIGH, MEDIUM, LOW
+  suggestedChannel String   @default("Voice AI")
+  suggestedMessage String?
+  executed         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
+
+model ActivityLog {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  action      String
+  details     String?
+  metadata    String? // JSON string
+  createdAt   DateTime  @default(now())
+}
+
+model BusinessProfile {
+  id                String    @id @default(cuid())
+  workspaceId       String    @unique
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  legalName         String
+  websiteUrl        String?
+  domain            String?
+  industry          String?
+  description       String?
+  headquarters      String?
+  targetGeographies String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model KnowledgeDocument {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  filename    String
+  content     String?
+  status      String    @default("PENDING") // PENDING, EXTRACTED, ERROR
+  type        String    // PDF, TXT
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model IcpProfile {
+  id                  String    @id @default(cuid())
+  workspaceId         String    @unique
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targetIndustries    String?   // JSON or comma-separated
+  companySize         String?
+  geographies         String?
+  decisionMakers      String?
+  technologies        String?
+  buyingSignals       String?
+  excludedIndustries  String?
+  excludedGeographies String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model BusinessCapability {
+  id                     String    @id @default(cuid())
+  workspaceId            String    @unique
+  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  normalizedCapabilities String?   // JSON
+  targetIndustries       String?   // JSON
+  targetRoles            String?   // JSON
+  keywords               String?   // JSON
+  negativeKeywords       String?   // JSON
+  qualificationCriteria  String?   // JSON
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+model LeadImport {
+  id            String            @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  source        String            // CSV, XLSX, SALESFORCE, HUBSPOT
+  status        String            @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  totalRows     Int               @default(0)
+  importedRows  Int               @default(0)
+  failedRows    Int               @default(0)
+  mappingConfig String?           // JSON configuration of column mappings
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  rows          LeadImportRow[]
+}
+
+model LeadImportRow {
+  id            String      @id @default(cuid())
+  importId      String
+  import        LeadImport  @relation(fields: [importId], references: [id], onDelete: Cascade)
+  rawData       String      // JSON dump of the row
+  status        String      @default("PENDING") // PENDING, SUCCESS, FAILED
+  errorReason   String?
+  leadId        String?
+  lead          Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+}
+
+model DiscoveryJob {
+  id              String            @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  status          String            @default("QUEUED") // QUEUED, RUNNING, COMPLETED, FAILED
+  source          String            // ALL, LINKEDIN, X, WEBSITE
+  searchParams    String?           // JSON
+  keywords        String?           // JSON of positive/negative/technology keywords
+  totalDiscovered Int               @default(0)
+  totalQualified  Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  results         DiscoveryResult[]
+}
+
+model DiscoveryResult {
+  id            String        @id @default(cuid())
+  jobId         String
+  job           DiscoveryJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sourceName    String
+  sourceUrl     String?
+  rawData       String        // JSON of scraped signal
+  confidence    Int           @default(50)
+  status        String        @default("PENDING_REVIEW") // PENDING_REVIEW, ACCEPTED, REJECTED
+  leadId        String?
+  lead          Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+}
+
+model LeadFieldProvenance {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fieldName   String   // e.g. "email", "phone", "linkedinUrl", "title", "company"
+  sourceName  String   // e.g. "LinkedIn", "Clearbit", "ZoomInfo", "Inferred"
+  sourceUrl   String?
+  confidence  Int      @default(50)
+  inferred    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([leadId, fieldName])
+}
+
+model ScoringConfiguration {
+  id               String    @id @default(cuid())
+  workspaceId      String    @unique
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  requirementWeight Int      @default(15)
+  urgencyWeight     Int      @default(15)
+  timelineWeight    Int      @default(15)
+  solutionFitWeight Int      @default(15)
+  decisionMakerWeight Int    @default(10)
+  recencyWeight     Int      @default(10)
+  companyFitWeight  Int      @default(10)
+  buyingStageWeight Int      @default(10)
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model AIDecisionTrace {
+  id                  String    @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leadId              String
+  lead                Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  targetMetric        String    // e.g. "Intent Score", "Solution Fit", "Urgency"
+  score               Int
+  contributingSignals String    // JSON array of strings
+  evidence            String    // Raw text explanation
+  confidence          Int       @default(90)
+  modelProvider       String    @default("LocalDemoAIProvider")
+  
+  createdAt           DateTime  @default(now())
+}
+
+model Integration {
+  id                     String    @id @default(cuid())
+  workspaceId            String
+  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider               String    // SALESFORCE, HUBSPOT, DEMO_CRM
+  status                 String    @default("DISCONNECTED") // CONNECTED, DISCONNECTED, ERROR
+  externalAccountId      String?
+  encryptedCredentialRef String?
+  lastSyncAt             DateTime?
+  errorState             String?
+  isDisabled             Boolean   @default(false)
+  
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  
+  syncLogs               SyncLog[]
+  
+  @@unique([workspaceId, provider])
+}
+
+model SyncLog {
+  id            String      @id @default(cuid())
+  workspaceId   String
+  integrationId String
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  
+  entityType    String      // LEAD, COMPANY, OPPORTUNITY, CALL
+  entityId      String
+  externalId    String?
+  status        String      @default("PENDING") // PENDING, SYNCING, SYNCED, FAILED, RETRYING
+  errorDetails  String?
+  payload       String?     // JSON of what was sent/received
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// ============================================================================
+// Platform Operations: Subscriptions, Billing, Usage, Notifications
+// ============================================================================
+
+model SubscriptionPlan {
+  id                  String   @id @default(cuid())
+  name                String   @unique // Starter, Growth, Enterprise
+  priceMonthly        Float
+  contactLimit        Int
+  aiVoiceMinuteLimit  Int
+  discoveryLimit      Int
+  campaignLimit       Int
+  teamMemberLimit     Int
+  integrationLimit    Int
+  exportLimit         Int
+  
+  subscriptions       WorkspaceSubscription[]
+}
+
+model WorkspaceSubscription {
+  id              String   @id @default(cuid())
+  workspaceId     String   @unique
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  planId          String
+  plan            SubscriptionPlan @relation(fields: [planId], references: [id])
+  
+  status          String   @default("ACTIVE") // ACTIVE, PAST_DUE, CANCELED, TRIAL
+  startDate       DateTime @default(now())
+  currentPeriodEnd DateTime
+  cancelAtPeriodEnd Boolean @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model UsageLedger {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  billingPeriodId String   // Identifier for the month/billing period (e.g. 2026-09)
+  type            String   // VOICE_MINUTES, DISCOVERED_LEADS, ENRICHED_LEADS, AI_ANALYSIS, IMPORTS, CRM_SYNC
+  amount          Float
+  description     String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([workspaceId, billingPeriodId, type])
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  billingPeriodId String
+  amount          Float
+  currency        String   @default("USD")
+  status          String   @default("DRAFT") // DRAFT, PAID, VOID, FAILED
+  usageSummary    String?  // JSON snapshot of usage for this invoice
+  
+  issuedAt        DateTime @default(now())
+  paidAt          DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  type            String   // HIGH_INTENT, CALL_COMPLETED, MEETING_BOOKED, USAGE_LIMIT, BILLING, etc.
+  severity        String   @default("INFO") // INFO, WARNING, ERROR, SUCCESS
+  title           String
+  message         String
+  link            String?  // Optional URL or deep link
+  isRead          Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+}
+
+// ============================================================================
+// Enterprise Admin, Fraud Detection and Security Controls
+// ============================================================================
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  workspaceId     String?
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor           String   // e.g., userId or "SYSTEM" or "ADMIN"
+  action          String
+  entityType      String
+  entityId        String
+  ipAddress       String?
+  userAgent       String?
+  metadata        String?  // JSON stringified context
+  
+  createdAt       DateTime @default(now())
+}
+
+model SecurityEvent {
+  id              String   @id @default(cuid())
+  workspaceId     String?
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type            String   // LOGIN_FAILURE, API_ABUSE, RATE_LIMIT, UNUSUAL_VOLUME
+  severity        String   @default("WARNING") // WARNING, CRITICAL
+  description     String
+  ipAddress       String?
+  
+  createdAt       DateTime @default(now())
+}
+
+model FraudSignal {
+  id              String   @id @default(cuid())
+  workspaceId     String?
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type            String   // ABNORMAL_CALL_VOLUME, DUPLICATE_BULK_IMPORT, REPEATED_API_FAILURES, etc.
+  riskLevel       String   // LOW, MEDIUM, HIGH, CRITICAL
+  status          String   @default("OPEN") // OPEN, ACKNOWLEDGED, RESOLVED
+  description     String
+  metadata        String?  // JSON context
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MeetingBooking {
+  id                  String       @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leadId              String
+  lead                Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  callId              String?
+  call                Call?        @relation(fields: [callId], references: [id], onDelete: SetNull)
+  campaignId          String?
+  campaign            Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  followUpPlanId      String?
+  followUpPlan        FollowUpPlan? @relation(fields: [followUpPlanId], references: [id], onDelete: SetNull)
+  
+  status              String       @default("PENDING") // PENDING, SMS_PENDING, SMS_SENT, SMS_DELIVERED, AWAITING_BOOKING, BOOKED, CANCELED, RETRY_DUE, RETRYING, ESCALATED, STOPPED, EXPIRED, FAILED
+  bookingProvider     String       @default("CALENDLY")
+  bookingUrl          String?
+  recipientPhone      String?
+  recipientEmail      String?
+  recipientName       String?
+  twilioMessageSid    String?
+  smsStatus           String?
+  smsSentAt           DateTime?
+  smsDeliveredAt      DateTime?
+  calendlyInviteeUri  String?
+  calendlyEventUri    String?
+  calendlyScheduledAt DateTime?
+  calendlyTimezone    String?
+  
+  lastCheckedAt       DateTime?
+  nextCheckAt         DateTime?
+  
+  retryCount          Int          @default(0)
+  maxRetries          Int          @default(3)
+  nextRetryAt         DateTime?
+  lastRetryAt         DateTime?
+  
+  bookedAt            DateTime?
+  canceledAt          DateTime?
+  failureReason       String?
+  metadata            String?      // JSON
+  
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([workspaceId, leadId])
+  @@index([status, nextCheckAt])
+  @@index([status, nextRetryAt])
+  @@index([twilioMessageSid])
+}
+
