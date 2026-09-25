@@ -205,6 +205,7 @@ model Lead {
   enrollments        CampaignEnrollment[]
   followUpPlans      FollowUpPlan[]
   meetingBookings    MeetingBooking[]
+  scanHistories      ScanHistory[]
   
   // CRM Integration Fields
   crmIntegrationId   String?
@@ -825,5 +826,18 @@ model MeetingBooking {
   @@index([status, nextCheckAt])
   @@index([status, nextRetryAt])
   @@index([twilioMessageSid])
+}
+
+model ScanHistory {
+  id          String    @id @default(cuid())
+  workspaceId String?
+  query       String
+  channel     String    @default("ALL")
+  location    String?
+  industry    String?
+  leadsFound  Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  leads       Lead[]
 }
 

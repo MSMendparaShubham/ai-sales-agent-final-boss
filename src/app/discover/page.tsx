@@ -17,6 +17,8 @@ import {
   X,
   Phone,
   MessageSquareQuote,
+  History,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,6 +26,23 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { TableLoadingSkeleton } from '@/components/shared/loading-skeleton';
 import { OpportunityItem } from '@/types';
 import { ImportCenter } from '@/components/discover/import-center';
+
+function formatTimeAgo(dateInput: string | Date): string {
+  try {
+    const d = new Date(dateInput);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  } catch {
+    return 'recently';
+  }
+}
 
 export default function DiscoveryPage() {
   const router = useRouter();
@@ -35,6 +54,7 @@ export default function DiscoveryPage() {
   const [results, setResults] = useState<OpportunityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanHistory, setScanHistory] = useState<any[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
@@ -73,9 +93,22 @@ export default function DiscoveryPage() {
     }
   }, [keyword, source, industry, location]);
 
+  const fetchScanHistory = useCallback(async () => {
+    try {
+      const res = await fetch('/api/discover/history');
+      if (res.ok) {
+        const data = await res.json();
+        setScanHistory(data.history || []);
+      }
+    } catch (e) {
+      console.error('[Discover UI] Failed to load scan history:', e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDiscoveryResults();
-  }, [fetchDiscoveryResults, source, industry, location]);
+    fetchScanHistory();
+  }, [fetchDiscoveryResults, fetchScanHistory, source, industry, location]);
 
   const handleManualScan = async () => {
     console.log('[Discover UI] Trigger Scan clicked. Filters:', {
@@ -125,6 +158,7 @@ export default function DiscoveryPage() {
           );
           setResults([]);
         }
+        await fetchScanHistory();
       } else {
         const errMsg = data.error || 'Discovery scan failed to find candidates. Please refine your search query.';
         console.error('[Discover UI Error]:', errMsg);
@@ -136,6 +170,32 @@ export default function DiscoveryPage() {
       showToast(errMsg, 'error');
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      const res = await fetch('/api/discover/history', { method: 'DELETE' });
+      if (res.ok) {
+        setScanHistory([]);
+        showToast('Scan history cleared successfully.', 'success');
+      }
+    } catch {
+      showToast('Failed to clear scan history.', 'error');
+    }
+  };
+
+  const handleLoadHistoryScan = (scan: any) => {
+    setKeyword(scan.query || '');
+    if (scan.channel) setSource(scan.channel);
+    if (scan.location) setLocation(scan.location);
+    if (scan.industry) setIndustry(scan.industry);
+
+    if (scan.leads && Array.isArray(scan.leads) && scan.leads.length > 0) {
+      setResults(scan.leads);
+      showToast(`Loaded ${scan.leads.length} discovered prospects from previous scan.`, 'success');
+    } else {
+      showToast(`Populated search filters for: "${scan.query}".`, 'success');
     }
   };
 
@@ -174,7 +234,7 @@ export default function DiscoveryPage() {
 
   const sources = [
     { key: 'LINKEDIN', label: 'LinkedIn Executive RFPs' },
-    { key: 'X', label: 'X / Twitter Signals' },
+    { key: 'X', label: 'X (Twitter) Buying Signals' },
     { key: 'WEBSITE', label: 'Corporate RFP Portals' },
   ];
 
@@ -253,7 +313,7 @@ export default function DiscoveryPage() {
             }`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>{isScanning ? 'Searching Live LinkedIn Posts...' : 'Trigger Scan Now'}</span>
+            <span>{isScanning ? 'Searching Live Posts...' : 'Trigger Scan Now'}</span>
           </Button>
           {!canTriggerScan && activeTab === 'ai' && (
             <span className="text-[10px] text-[#627D98] font-medium">
@@ -413,10 +473,74 @@ export default function DiscoveryPage() {
             </div>
           </Card>
 
+          {/* Recent Discovery Scans Section */}
+          {scanHistory.length > 0 && (
+            <div className="p-3.5 bg-slate-900 text-white rounded-xl shadow-md border border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-blue-600/20 text-blue-400 border border-blue-500/30">
+                    <History className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                    Recent Discovery Scans
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                    {scanHistory.length}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleClearHistory}
+                  className="text-[11px] font-medium text-slate-400 hover:text-rose-400 flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-slate-800/80"
+                  title="Clear all recent scan history"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear History</span>
+                </button>
+              </div>
+
+              {/* History Chips */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {scanHistory.slice(0, 5).map((scan) => {
+                  const isTwitter = scan.channel === 'X' || scan.channel === 'TWITTER';
+                  const isLinkedIn = scan.channel === 'LINKEDIN';
+                  const displayQuery = scan.query?.length > 36 ? `${scan.query.slice(0, 36)}...` : scan.query;
+
+                  return (
+                    <button
+                      key={scan.id}
+                      onClick={() => handleLoadHistoryScan(scan)}
+                      className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-left border border-slate-700 hover:border-blue-500/50 transition-all text-xs shadow-xs"
+                    >
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        isTwitter
+                          ? 'bg-slate-950 text-white border border-slate-700'
+                          : isLinkedIn
+                          ? 'bg-blue-600/30 text-blue-300 border border-blue-500/30'
+                          : 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/30'
+                      }`}>
+                        {isTwitter ? 'X' : isLinkedIn ? 'LI' : 'WEB'}
+                      </span>
+                      <span className="font-medium text-slate-200 group-hover:text-white max-w-[220px] truncate">
+                        &ldquo;{displayQuery}&rdquo;
+                      </span>
+                      <span className="text-[11px] text-blue-400 font-semibold shrink-0">
+                        {scan.leadsFound} leads
+                      </span>
+                      <span className="text-[10px] text-slate-400 shrink-0">
+                        &bull; {formatTimeAgo(scan.createdAt)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Discovery Results Count Header */}
           <div className="flex items-center justify-between text-xs text-[#627D98] px-1 font-medium">
             <span>Found {results.length} live executive buying signals</span>
-            <span className="text-[#0F9D9A] font-bold">Live Serper Google Crawl Active</span>
+            <span className="text-[#0F9D9A] font-bold">Live Multi-Channel Crawl Active</span>
           </div>
 
           {/* Results Cards */}

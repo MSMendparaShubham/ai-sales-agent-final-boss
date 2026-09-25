@@ -54,10 +54,31 @@ export async function POST(req: NextRequest) {
 
     console.log('[Discover Scan API] Scan completed successfully. Discovered count:', result?.totalDiscovered || 0);
 
+    // Record scan in ScanHistory
+    let scanRecord: any = null;
+    try {
+      scanRecord = await prisma.scanHistory.create({
+        data: {
+          workspaceId: membership.workspaceId,
+          query: searchTerm || 'Enterprise Cloud Modernization',
+          channel: selectedSource || 'ALL',
+          location: location || null,
+          industry: industry || null,
+          leadsFound: result?.totalDiscovered || 0,
+          leads: result?.leads && result.leads.length > 0 ? {
+            connect: result.leads.map((l: any) => ({ id: l.id })),
+          } : undefined,
+        },
+      });
+    } catch (histErr) {
+      console.error('[ScanHistory Record Error]:', histErr);
+    }
+
     return NextResponse.json(
       {
         success: true,
         jobId: job.id,
+        scanHistoryId: scanRecord?.id,
         count: result?.totalDiscovered || 0,
         totalDiscovered: result?.totalDiscovered || 0,
         leads: result?.leads || [],
