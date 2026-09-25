@@ -126,35 +126,52 @@ export default function DiscoveryPage() {
     }
   };
 
+  const canTriggerScan = Boolean(keyword && keyword.trim().length > 0);
+
+  const keywordPresets = [
+    'SharePoint Migration',
+    'Microsoft 365 Setup',
+    'Cloud Infrastructure & AWS',
+    'Salesforce Implementation',
+    'HubSpot CRM Consulting',
+    'Cybersecurity & Compliance',
+    'SOC 2 Audit Prep',
+    'DevOps & Kubernetes',
+    'ERP Modernization (SAP / Oracle)',
+    'Generative AI & LLM Integration',
+    'Data Engineering & Snowflake',
+    'Custom Mobile App Development',
+    'Enterprise UI/UX Redesign',
+    'Full-Stack Web Development',
+    'IT Managed Services & Support',
+    'B2B SaaS Sales Outsourcing',
+    'Staff Augmentation & Hiring',
+    'QA & Automated Testing',
+  ];
+
   const sources = [
     { key: 'ALL', label: 'All Public Channels' },
     { key: 'LINKEDIN', label: 'LinkedIn Executive RFPs' },
     { key: 'X', label: 'X / Twitter Signals' },
     { key: 'WEBSITE', label: 'Corporate RFP Portals' },
-    { key: 'PUBLIC_DIRECTORY', label: 'Public Procurement Registers' },
-    { key: 'FREELANCE_PLATFORM', label: 'Enterprise Contract Boards' },
   ];
 
   const industries = [
     'ALL',
-    'Enterprise Cloud Services',
-    'Financial Technology',
-    'Healthcare & EHR',
-    'Cybersecurity & IAM',
-    'Smart Logistics & Supply Chain',
-    'Industrial IoT & Manufacturing',
-    'Clean Energy & Smart Grid',
-    'E-Commerce & Retail AI',
+    'Information Technology & Services',
+    'Software Development',
+    'Financial Services & FinTech',
+    'Healthcare & HealthTech',
+    'Manufacturing & Industrial',
+    'E-commerce & Retail',
   ];
 
   const locations = [
     'ALL',
-    'Austin, TX',
-    'San Francisco, CA',
-    'Boston, MA',
-    'Seattle, WA',
-    'New York, NY',
-    'Chicago, IL',
+    'United States',
+    'United Kingdom & Europe',
+    'India & APAC',
+    'Remote / Global',
   ];
 
   return (
@@ -203,15 +220,27 @@ export default function DiscoveryPage() {
           </div>
         </div>
 
-        <Button
-          onClick={handleManualScan}
-          disabled={isScanning || activeTab !== 'ai'}
-          size="sm"
-          className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white text-xs font-semibold flex items-center gap-2 shadow-sm"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-          <span>{isScanning ? 'Scanning Public Channels...' : 'Trigger Scan Now'}</span>
-        </Button>
+        <div className="flex flex-col sm:items-end gap-1">
+          <Button
+            onClick={handleManualScan}
+            disabled={!canTriggerScan || isScanning || activeTab !== 'ai'}
+            size="sm"
+            title={!canTriggerScan ? 'Please enter or select a search keyword to trigger scan' : undefined}
+            className={`text-xs font-semibold flex items-center gap-2 shadow-sm transition-all ${
+              !canTriggerScan || isScanning || activeTab !== 'ai'
+                ? 'bg-slate-200 text-slate-400 border border-slate-300 opacity-60 cursor-not-allowed hover:bg-slate-200'
+                : 'bg-[#2563EB] hover:bg-[#1d4ed8] text-white'
+            }`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+            <span>{isScanning ? 'Scanning Public Channels...' : 'Trigger Scan Now'}</span>
+          </Button>
+          {!canTriggerScan && activeTab === 'ai' && (
+            <span className="text-[10px] text-[#627D98] font-medium">
+              Please enter or select a search keyword to trigger scan
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -245,31 +274,64 @@ export default function DiscoveryPage() {
           {/* Filter Toolbar */}
           <Card className="p-4 sm:p-5 glass-card border-slate-200/80 space-y-4 rounded-xl shadow-glass">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
-              {/* Keyword */}
-              <div className="md:col-span-5">
-                <label className="text-[11px] font-bold text-[#627D98] block mb-1">
-                  Keyword
-                </label>
-                <div className="relative">
-                  <Search className="w-4 h-4 text-[#627D98] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <Input
-                    type="text"
-                    placeholder="e.g. SharePoint, Cloud Migration, Head of IT"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        fetchDiscoveryResults();
+              {/* Keyword & Presets Dropdown */}
+              <div className="md:col-span-5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-[#627D98] flex items-center gap-1">
+                    <span>Keyword / Requirement</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-[#2563EB] font-semibold">Required to Scan</span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-[#627D98] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="e.g. SharePoint, Cloud Migration, Head of IT"
+                      value={keyword}
+                      onChange={(e) => setKeyword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          fetchDiscoveryResults();
+                        }
+                      }}
+                      className="pl-9 h-9 bg-white border-[#D9E2EC] text-[#102A43] text-xs placeholder:text-[#627D98] focus-visible:ring-[#2563EB] font-sans font-medium"
+                    />
+                    {keyword && (
+                      <button
+                        onClick={() => setKeyword('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                        title="Clear keyword"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Preset Dropdown */}
+                  <select
+                    value={keywordPresets.includes(keyword) ? keyword : ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setKeyword(e.target.value);
                       }
                     }}
-                    className="pl-9 h-9 bg-white border-[#D9E2EC] text-[#102A43] text-xs placeholder:text-[#627D98] focus-visible:ring-[#2563EB] font-sans font-medium"
-                  />
+                    className="w-full h-8 bg-slate-50 border border-[#D9E2EC] rounded-md px-2.5 text-[11px] text-[#102A43] focus:outline-none focus:border-[#2563EB] font-medium"
+                  >
+                    <option value="">⚡ Or Choose from 18 High-Intent B2B Presets...</option>
+                    {keywordPresets.map((preset) => (
+                      <option key={preset} value={preset}>
+                        {preset}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               {/* Public Channel */}
-              <div className="md:col-span-3">
-                <label className="text-[11px] font-bold text-[#627D98] block mb-1">
+              <div className="md:col-span-3 space-y-1.5">
+                <label className="text-[11px] font-bold text-[#627D98] block">
                   Public Channel
                 </label>
                 <select
@@ -286,8 +348,8 @@ export default function DiscoveryPage() {
               </div>
 
               {/* Target Industry */}
-              <div className="md:col-span-2">
-                <label className="text-[11px] font-bold text-[#627D98] block mb-1">
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="text-[11px] font-bold text-[#627D98] block">
                   Target Industry
                 </label>
                 <select
@@ -304,8 +366,8 @@ export default function DiscoveryPage() {
               </div>
 
               {/* Target Location */}
-              <div className="md:col-span-2">
-                <label className="text-[11px] font-bold text-[#627D98] block mb-1">
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="text-[11px] font-bold text-[#627D98] block">
                   Target Location
                 </label>
                 <select
@@ -320,6 +382,38 @@ export default function DiscoveryPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Quick-Select Pills */}
+            <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-bold text-[#627D98] uppercase tracking-wider mr-1 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#2563EB]" />
+                Top Presets:
+              </span>
+              {[
+                'SharePoint Migration',
+                'Microsoft 365 Setup',
+                'Cloud Infrastructure & AWS',
+                'Generative AI & LLM Integration',
+                'DevOps & Kubernetes',
+                'Cybersecurity & Compliance',
+                'Salesforce Implementation',
+                'SOC 2 Audit Prep',
+                'Data Engineering & Snowflake',
+              ].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setKeyword(p)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                    keyword === p
+                      ? 'bg-[#2563EB] text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-[#102A43] border border-slate-200/60'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
             </div>
           </Card>
 
