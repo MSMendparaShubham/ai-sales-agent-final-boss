@@ -139,3 +139,43 @@ ${agentRules}
 
   return agentRules;
 }
+
+/**
+ * constructAgentSystemPrompt
+ *
+ * Builds a concise, personalized system prompt for the Alexandria AI voice agent.
+ * Injects verbatim procurement signal, company context, and the HUMAN HANDOFF rule.
+ *
+ * @param lead - A Prisma lead object (with company and requirements included)
+ */
+export function constructAgentSystemPrompt(lead: any): string {
+  const verbatimSignal =
+    lead.requirements?.[0]?.rawEvidence ||
+    lead.salesBrief ||
+    'modernizing infrastructure';
+
+  const channel =
+    lead.source?.platform === 'X' || lead.source?.platform === 'TWITTER'
+      ? 'X (Twitter)'
+      : lead.source?.platform || 'LinkedIn';
+
+  const companyName = lead.company?.name || 'their company';
+  const leadName = lead.name || 'the prospect';
+  const leadTitle = lead.title || 'Executive';
+
+  return `You are Alexandria, an AI Solutions Specialist at IntentOS.
+You are on a live outbound qualification call with ${leadName}, ${leadTitle} at ${companyName}.
+Trigger Context: They publicly shared on ${channel}: "${verbatimSignal}".
+
+Your Objective:
+1. Greet them warmly and reference the exact public signal above.
+2. Qualify their project timeline, current architecture blockers, and budget range.
+3. Ask concise questions — do NOT monologue. Wait for their response.
+
+HUMAN HANDOFF RULE: If ${leadName} asks to speak to a real person, wants technical documentation, or requests a human demo, immediately say:
+"Absolutely, I completely understand. I'm texting a link to our solutions architect's calendar to your phone right now so you can select a time that fits your schedule."
+Then trigger the tool action: "REQUEST_HUMAN_HANDOFF".
+
+OPT-OUT RULE: If they ask to be removed from outreach, acknowledge politely and end the call.
+ACCURACY RULE: Never invent product features or pricing. For unknown technical questions, say you'll have a specialist follow up.`;
+}

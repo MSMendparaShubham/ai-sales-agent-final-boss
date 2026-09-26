@@ -24,6 +24,10 @@ import {
   Copy,
   Check,
   ExternalLink,
+  ChevronDown,
+  PhoneForwarded,
+  RefreshCw,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -40,6 +44,10 @@ export default function CallsPage() {
   const [callbacks, setCallbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [followUpQueue, setFollowUpQueue] = useState<any[]>([]);
+  const [followUpQueueOpen, setFollowUpQueueOpen] = useState(false);
+  const [handoffApiLoading, setHandoffApiLoading] = useState(false);
+  const [handoffApiResult, setHandoffApiResult] = useState<any>(null);
 
   // Active Call Cockpit States
   const [activeCallModal, setActiveCallModal] = useState(false);
@@ -115,10 +123,48 @@ export default function CallsPage() {
     }
   };
 
+  const fetchFollowUpQueue = async () => {
+    try {
+      const res = await fetch('/api/calls/follow-up-queue');
+      if (res.ok) {
+        const data = await res.json();
+        setFollowUpQueue(data.queue || []);
+      }
+    } catch {}
+  };
+
+  /** Trigger handoff via /api/calls/handoff and arm the re-call scheduler */
+  const handleDirectHandoff = async (leadId?: string, callSessionId?: string) => {
+    if (handoffApiLoading) return;
+    try {
+      setHandoffApiLoading(true);
+      const res = await fetch('/api/calls/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: leadId || activeLead?.id,
+          callSessionId,
+        }),
+      });
+      const data = await res.json();
+      setHandoffApiResult(data);
+      showToast(
+        data.message ||
+          `SMS with Calendly booking link sent to ${data.phone}. Automated re-call scheduler armed if booking is not completed within 2 hours.`,
+      );
+      fetchFollowUpQueue();
+    } catch (err: any) {
+      showToast(`Handoff error: ${err.message}`);
+    } finally {
+      setHandoffApiLoading(false);
+    }
+  };
+
   const hasStartedRef = useRef(false);
 
   useEffect(() => {
     fetchCallsData();
+    fetchFollowUpQueue();
     const checkStart = () => {
       if (typeof window !== 'undefined' && !hasStartedRef.current) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -697,14 +743,27 @@ export default function CallsPage() {
                   </Button>
 
                   <Button
-                    onClick={handleHumanHandoff}
+                    onClick={() => handleDirectHandoff(activeLead?.id)}
+                    disabled={handoffApiLoading || !!handoffApiResult}
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs border-[#D97706]/40 bg-[#FEF3C7]/50 text-[#D97706] hover:bg-[#FEF3C7] flex items-center gap-1.5 font-bold"
+                    className={`h-8 text-xs flex items-center gap-1.5 font-bold transition-all ${
+                      handoffApiResult
+                        ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                        : 'border-[#D97706]/40 bg-[#FEF3C7]/50 text-[#D97706] hover:bg-[#FEF3C7]'
+                    }`}
                     data-testid="human-handoff"
                   >
-                    <UserCheck className="w-3.5 h-3.5 text-[#D97706]" />
-                    <span>Human Handoff</span>
+                    {handoffApiLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : handoffApiResult ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <PhoneForwarded className="w-3.5 h-3.5 text-[#D97706]" />
+                    )}
+                    <span>
+                      {handoffApiResult ? 'Handoff to Human ✓' : 'Handoff to Human (Send Calendly Link)'}
+                    </span>
                   </Button>
 
                   <Button
@@ -752,12 +811,31 @@ export default function CallsPage() {
                 </div>
                 <div>
                   <span className="text-[#64748B] text-[10px] uppercase font-bold block">TOP REQUIREMENT</span>
-                  <span className="font-semibold text-[#2563EB]">Microsoft 365 & SharePoint Implementation</span>
+                  <span className="font-semibold text-[#2563EB]">
+                    {activeLead?.requirements?.[0]?.title ||
+                      activeLead?.requirements?.[0]?.description ||
+                      'Infrastructure Modernization'}
+                  </span>
+                  {activeLead?.requirements?.[0]?.rawEvidence && (
+                    <span className="text-[#475569] text-[10px] mt-1 block italic line-clamp-2">
+                      &ldquo;{activeLead.requirements[0].rawEvidence}&rdquo;
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-[#64748B] text-[10px] uppercase font-bold block">PHONE</span>
+                  <span className="font-mono text-[#10233F] text-[11px]">
+                    {activeLead?.phone || '+1 (555) 019-2834 (demo)'}
+                  </span>
                 </div>
                 <div className="pt-2 border-t border-[#DCE5EF] space-y-1">
                   <span className="text-[#64748B] text-[10px] uppercase font-bold block">FIRMOGRAPHICS</span>
-                  <span className="text-[#475569] block">51-200 Employees &bull; IT Services</span>
-                  <span className="text-[#475569] block">$150,000 ARR Pipeline</span>
+                  <span className="text-[#475569] block">
+                    {activeLead?.company?.size || '51-200 Employees'} &bull; {activeLead?.company?.industry || 'IT Services'}
+                  </span>
+                  <span className="text-[#475569] block">
+                    ${((activeLead?.pipelineValue || 25000) / 1000).toFixed(0)}K ARR Pipeline
+                  </span>
                 </div>
               </div>
             </div>
@@ -1406,6 +1484,133 @@ export default function CallsPage() {
           fetchCallsData();
         }}
       />
+
+      {/* ── FOLLOW-UP QUEUE DRAWER ───────────────────────────────────────── */}
+      <div className="mt-6 border border-[#DCE5EF] rounded-xl overflow-hidden">
+        {/* Header / toggle */}
+        <button
+          type="button"
+          onClick={() => {
+            setFollowUpQueueOpen((v) => !v);
+            if (!followUpQueueOpen) fetchFollowUpQueue();
+          }}
+          className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-[#F7F9FC] transition-colors"
+          data-testid="follow-up-queue-toggle"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-sm">
+              <Users className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <div className="font-bold text-[#10233F] text-sm flex items-center gap-2">
+                Follow-up Queue
+                {followUpQueue.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200">
+                    {followUpQueue.length} pending
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-[#64748B]">
+                Leads sent a Calendly link — track booking status & re-dial unbooked leads
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); fetchFollowUpQueue(); }}
+              className="p-1.5 rounded-md hover:bg-[#EFF6FF] text-[#64748B] hover:text-[#2563EB] transition-colors"
+              title="Refresh queue"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            <ChevronDown
+              className={`w-4 h-4 text-[#64748B] transition-transform duration-200 ${
+                followUpQueueOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </div>
+        </button>
+
+        {/* Queue body */}
+        {followUpQueueOpen && (
+          <div className="border-t border-[#DCE5EF] divide-y divide-[#F1F5F9]">
+            {followUpQueue.length === 0 ? (
+              <div className="py-10 text-center text-xs text-[#94A3B8]">
+                <PhoneForwarded className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                No leads in the follow-up queue yet. Trigger a handoff from an active call to populate this list.
+              </div>
+            ) : (
+              followUpQueue.map((item: any) => (
+                <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-white hover:bg-[#FAFBFF] transition-colors">
+                  {/* Left: lead info */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm ${
+                      item.calendlyBooked
+                        ? 'bg-emerald-500'
+                        : 'bg-gradient-to-br from-violet-500 to-purple-600'
+                    }`}>
+                      {item.name?.charAt(0) || 'L'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-[#10233F] text-sm truncate">{item.name}</div>
+                      <div className="text-[11px] text-[#64748B] truncate">{item.title} &bull; {item.companyName}</div>
+                      <div className="font-mono text-[10px] text-[#94A3B8] mt-0.5">{item.phone || 'No phone'}</div>
+                    </div>
+                  </div>
+
+                  {/* Center: booking status badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {item.calendlyBooked ? (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Booked
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        {item.retryInMinutes !== null && item.retryInMinutes > 0
+                          ? `Pending Booking (Follow-up Call in ${item.retryInMinutes} min)`
+                          : 'Pending Booking (re-call imminent)'}
+                      </span>
+                    )}
+                    {item.minutesSinceSms !== null && (
+                      <span className="text-[10px] text-[#94A3B8] font-medium">
+                        SMS sent {item.minutesSinceSms}m ago
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right: actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!item.calendlyBooked && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleDirectHandoff(item.id)}
+                        disabled={handoffApiLoading}
+                        className="h-8 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 flex items-center gap-1.5 shadow-sm"
+                        data-testid={`re-dial-${item.id}`}
+                      >
+                        <PhoneForwarded className="w-3.5 h-3.5" />
+                        Re-dial Now
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleStartHeroCall(language, item.id)}
+                      className="h-8 border-[#DCE5EF] bg-white text-[#10233F] text-xs font-medium px-3 flex items-center gap-1.5"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5 text-[#2563EB]" />
+                      Call
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

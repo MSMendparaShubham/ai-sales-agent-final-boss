@@ -207,11 +207,19 @@ model Lead {
   meetingBookings    MeetingBooking[]
   scanHistories      ScanHistory[]
   
+  // Handoff & Calendly Scheduling
+  handoffRequested   Boolean          @default(false)
+  calendlySentAt     DateTime?
+  calendlyBooked     Boolean          @default(false)
+  retryCallScheduled DateTime?
+
   // CRM Integration Fields
   crmIntegrationId   String?
   crmStatus          String           @default("NOT_CONNECTED") // NOT_CONNECTED, PENDING, SYNCING, SYNCED, FAILED
   crmExternalId      String?
   crmLastSyncAt      DateTime?
+
+  callSessions       CallSession[]
 }
 
 model Requirement {
@@ -841,3 +849,15 @@ model ScanHistory {
   leads       Lead[]
 }
 
+model CallSession {
+  id              String    @id @default(cuid())
+  leadId          String
+  lead            Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status          String    @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED, HANDOFF_SMS_SENT
+  duration        Int       @default(0)
+  transcript      String?
+  outcome         String?   // QUALIFIED, NOT_INTERESTED, HUMAN_HANDOFF_REQUESTED
+  recordingUrl    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
